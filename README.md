@@ -1,26 +1,41 @@
 # 🚀 AlgoCheat AI — The 2026 LinkedIn Algorithm Cheat Code
 
-**AlgoCheat AI** is a free, PWA-ready, privacy-first LinkedIn content auditor and optimizer. It analyzes your posts against 10 strict 2026 LinkedIn algorithm parameters, detects your personal writing voice fingerprint, and provides a 10/10 optimized rewrite that sounds like *you*—not ChatGPT.
+<div align="center">
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![React Version](https://img.shields.io/badge/React-18.3-blue.svg?logo=react)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Deployed on Vercel](https://img.shields.io/badge/Vercel-Production-000000.svg?logo=vercel&logoColor=white)](https://algocheatai.vercel.app)
+[![Platform: PWA](https://img.shields.io/badge/PWA-Ready-009688.svg?logo=pwa&logoColor=white)](https://algocheatai.vercel.app)
+
+**A 100% Free, Privacy-First, client-side LinkedIn post auditor and voice-preserved rewriter.**
+
+[Try the Live Web App](https://algocheatai.vercel.app) • [View License](./LICENSE) • [Report Issues](https://github.com/bobtech-IIT/AlgoCheatAI/issues)
+
+---
+</div>
+
+**AlgoCheat AI** helps creators, builders, and professionals bypass the "invisible penalties" of the LinkedIn algorithm. Instead of rewriting your post in a robotic ChatGPT voice, AlgoCheat detects your personal writing voice fingerprint, scores your draft against 10 strict 2026 organic reach metrics, and delivers an optimized version that sounds exactly like you.
 
 ---
 
-## 🛠️ Key Features
+## ✨ Key Capabilities
 
-*   **📝 Text Post Audit:** Tailored for text-only posts; scores hooks, dwell-time layouts, authentic voice, value density, narrative arcs, and conversation triggers.
-*   **🖼️ Image Post Audit:** Optimizes graphics, photo posts, and multi-page carousels, checking caption-image synergy and alt-text accessibility.
-*   **📖 Article Audit:** Calibrated for long-form LinkedIn articles and newsletters, checking SEO titles, meta-descriptions, subhead hierarchy, and tl;dr blocks.
-*   **✍️ The Refinement Engine ("Want any change?"):** Type instructions in plain English (e.g., *"add emojis"*, *"make it 30% shorter"*, *"add a Hindi line at the end"*). It features:
-    *   **Double-Hook Prevention:** Replaces hook lines instead of stacking them.
-    *   **Hashtag Preservation:** Retains niche hashtags at the bottom during edits.
-    *   **Phantom Link Prevention:** Blocks AI from hallucinating *"click the link"* language when no link is provided.
-*   **🤖 Predicted 100/100 Generator:** Drop a topic, niche, or angle, answer 4 quick founder questions, and get a ready-to-publish post.
-*   **🧠 Automatic Sanitizer Safety Net:** Deteminstically strips out trailing AI self-evaluations and footnotes (e.g. *"This post scores highly..."*) before displaying or copying.
+*   **📝 Text Post Audit:** Tailored for standard posts. Analyzes hooks, spacing, value density, narrative arcs, and conversation triggers.
+*   **🖼️ Image & Carousel Audit:** Checks caption-image synergy and alt-text accessibility for visual assets.
+*   **📖 Article/Newsletter Audit:** Optimizes long-form text with SEO headlines, H2/H3 subhead hierarchies, and scannable TL;DR blocks.
+*   **✍️ The Refinement Engine ("Want any change?"):** Fine-tune outputs using plain English commands (e.g. *"add emojis"*, *"make it punchier"*). Features built-in:
+    *   **Double-Hook Prevention:** Intelligently replaces the old hook instead of stacking them.
+    *   **Hashtag Preservation:** Retains and formats 3-5 niche tags at the bottom.
+    *   **Phantom Link Prevention:** Blocks the AI from writing *"click the link"* when no link exists.
+*   **🤖 Predicted 100/100 Generator:** Answer 4 context-gathering questions and get an instant, high-performing post tailored to your story.
+*   **🧠 Automatic Sanitizer Safety Net:** Deterministically strips trailing AI comments, scorecards, or footnotes before you copy the text.
 
 ---
 
 ## 🔒 Security & Logic Protection Architecture
 
-AlgoCheat is built with a secure **Double-Guard Architecture** protecting proprietary prompt engineering and dynamic tokens:
+AlgoCheat utilizes a **Double-Guard Architecture** to protect proprietary prompt logic and Puter auth keys:
 
 ```mermaid
 sequenceDiagram
@@ -39,42 +54,43 @@ sequenceDiagram
     Note over Client: 6. Apply final regex safety strip
 ```
 
-1.  **Prompts-as-a-Service (PaaS):** proprietary system prompts are stored entirely on the serverless backend (`api/shared.js`) to keep them hidden from browser DevTools inspect panels.
-2.  **Dynamic Sandboxed Puter Clients:** Puter auth tokens are passed via Bearer headers and loaded dynamically in secure sandboxed VMs (`vm.createContext`) on Vercel endpoints, preventing token leakages.
-3.  **Edge Scanners:** Checks inputs for gibberish/spam to prevent prompt injections and resource abuse.
-4.  **Iframe Protections:** Employs strict CSP `frame-ancestors 'none'` and `X-Frame-Options: DENY` configurations to block clickjacking wrappers.
+1.  **Backend Abstraction (PaaS):** proprietary prompt templates and scoring rubrics are hosted on Vercel backend serverless endpoints (`api/shared.js`), hiding them completely from browser DevTools.
+2.  **Dynamic Sandboxed Client Loading:** Puter authentication tokens are passed via standard Authorization headers and initialized dynamically inside backend sandboxed VMs (`vm.createContext`), preventing key exposure.
+3.  **Abuse Prevention Scanners:** Pre-scans inputs for gibberish/spam to block resource exhaustion.
+4.  **Embed Protections:** Uses strict CSP rules (`frame-ancestors 'none'`) and `X-Frame-Options: DENY` in `vercel.json` to prevent iframe clickjacking.
 
 ---
 
 ## 💻 Tech Stack
 
-*   **Frontend:** React (TypeScript) + Vite PWA
+*   **Frontend:** React 18 + TypeScript + Vite PWA
 *   **Styling:** Tailwind CSS + Shadcn UI
-*   **Core SDK:** Puter.js (client-side LLM gateway)
-*   **Hosting & Backend:** Vercel (Serverless Functions)
+*   **Core AI Engine:** Puter.js (Client-side AI API gateway)
+*   **Serverless Layer & Hosting:** Vercel (Serverless Functions)
 
 ---
 
 ## 🚀 Local Development
 
-Follow these steps to run and build the application locally:
+Get the project running on your local machine in three steps:
 
 ### 1. Install Dependencies
 ```bash
 npm install
 ```
 
-### 2. Run the Development Server
+### 2. Launch Local Server
 ```bash
 npm run dev
 ```
 
-### 3. Build for Production
+### 3. Compile Production Build
 ```bash
 npm run build
 ```
 
-### 4. Deploy to Vercel
-```bash
-npx vercel --prod
-```
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details. Built purely as a passion project for the developer/creator community.
