@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Zap } from "lucide-react";
+import { Zap, Github } from "lucide-react";
 
 const links = [
   { href: "#features", label: "Features" },
@@ -57,8 +57,11 @@ export function Navbar() {
 
           {/* CTA buttons — shrink-0 prevents squishing */}
           <div className="flex items-center gap-2 shrink-0 ml-2">
-            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-              <a href="#content-lab">Sign in</a>
+            <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex gap-1.5 border-border hover:bg-muted h-8 sm:h-9">
+              <a href="https://github.com/bobtech-IIT/AlgoCheatAI" target="_blank" rel="noopener noreferrer">
+                <Github className="w-3.5 h-3.5" />
+                <span>Star on GitHub</span>
+              </a>
             </Button>
             <Button
               size="sm"
