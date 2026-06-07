@@ -27,3 +27,5 @@ Thumbs.db
 
 # Post-build scripts (not needed on Vercel)
 post-obfuscate.mjs
+
+.vercel

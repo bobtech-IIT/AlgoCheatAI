@@ -2,6 +2,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
 import { LogoCloud } from "@/components/landing/LogoCloud";
 import { ProblemSolution } from "@/components/landing/ProblemSolution";
+import { HowToUse } from "@/components/landing/HowToUse";
 import { FeatureBento } from "@/components/landing/FeatureBento";
 import { ROICalculator } from "@/components/landing/ROICalculator";
 import { ProductShowcase } from "@/components/landing/ProductShowcase";
@@ -23,6 +24,7 @@ const Index = () => {
       <Navbar />
       <main>
         <Hero />
+        <HowToUse />
         <LogoCloud />
         <ProblemSolution />
         <FeatureBento />

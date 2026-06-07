@@ -14,4 +14,8 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // Never generate source maps — prevents any source leakage
+    sourcemap: false,
+  },
 });

@@ -17,14 +17,21 @@ export function Hero() {
             Built for the LinkedIn 2026 Algorithm
           </Badge>
 
-          <h1 className="font-display text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight mb-6">
-            The 2026 LinkedIn <br />
-            <span className="text-gradient-mint">Algorithm Cheat Code</span>.
+          <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight mb-4">
+            Your Post Got{" "}
+            <span className="text-gradient-mint">4 Likes.</span>
+            <br />
+            Again.
           </h1>
 
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Stop getting shadowbanned by generic AI slop. Audit any draft on 10 strict algorithm parameters, 
-            bypass organic reach penalties, and write 10/10 content that turns views into high-paying clients.
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed">
+            You spent hours crafting that post. LinkedIn buried it.{" "}
+            <span className="text-foreground font-medium">Not because you're not good enough —</span>{" "}
+            because the 2026 algorithm silently penalizes generic AI tone, bad hook structure, and invisible reach triggers.
+          </p>
+
+          <p className="text-sm sm:text-base text-primary font-semibold mb-10">
+            AlgoCheat AI shows you <em>exactly</em> why — and rewrites it so you get seen. Free. In 30 seconds.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
@@ -38,7 +45,7 @@ export function Hero() {
               </a>
             </Button>
             <Button size="lg" variant="outline" asChild className="h-12 px-6 text-base border-border/60 bg-card/40 backdrop-blur">
-              <a href="#features">See cheat sheet</a>
+              <a href="#how-to-use">See how it works</a>
             </Button>
           </div>
 
@@ -52,7 +59,7 @@ export function Hero() {
             <span className="hidden sm:inline opacity-40">·</span>
             <span>24,800+ posts audited this week</span>
             <span className="hidden sm:inline opacity-40">·</span>
-            <span>100% Free Client-Side AI</span>
+            <span>100% Free · No sign-up required</span>
           </div>
         </div>
 
@@ -62,7 +69,7 @@ export function Hero() {
           <div className="relative rounded-2xl overflow-hidden border border-border/60 shadow-elevated ring-glow">
             <img
               src={heroImage}
-              alt="LinkedIn Zero CAC Engine analytics dashboard showing growth metrics and content scores"
+              alt="AlgoCheat AI dashboard showing LinkedIn post audit scores and rewrite engine"
               width={1920}
               height={1080}
               className="w-full h-auto"

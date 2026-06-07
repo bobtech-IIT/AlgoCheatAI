@@ -5,10 +5,55 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap } from "lucide-react";
-import { auditContent, generateContent, AuditResult, GenerateResult } from "@/lib/puterAI";
+import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap, MessageSquarePlus } from "lucide-react";
+import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, AuditResult, GenerateResult } from "@/lib/puterAI";
 import { ContentType, RUBRICS } from "@/lib/auditRubrics";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
+
+function sanitize(text: string): string {
+  let cleaned = text
+    .trim()
+    .replace(/^"""/g, "")
+    .replace(/"""$/g, "")
+    .replace(/^```[a-z]*\n/i, "")
+    .replace(/```$/g, "")
+    .replace(/\\n/g, "\n")
+    .replace(/\\t/g, "\t")
+    .replace(/\\"/g, '"')
+    .replace(/\*\*/g, "")
+    .trim();
+
+  // Strip common trailing AI scorecard/meta-analysis leak paragraphs
+  const scorecardPatterns = [
+    /\n*(?:The|This|Why this) post (?:hits|scores|is written|satisfies|incorporates|delivers|hooks|achieves)\b.*/is,
+    /\n*(?:This) draft (?:satisfies|incorporates|delivers|hooks|achieves)\b.*/is,
+    /\n*Why this scores \d+\/\d+\b.*/is,
+    /\n*Hook (?:delivers|hits|is|has|strength)\b.*/is,
+  ];
+
+  for (const pattern of scorecardPatterns) {
+    cleaned = cleaned.replace(pattern, "").trim();
+  }
+
+  // Find the last hashtag in the text. Anything after it that is not whitespace or a hashtag is a leak.
+  const hashtagRegex = /#[a-z0-9_]+/ig;
+  let match;
+  let lastHashtagIndex = -1;
+  let lastHashtagLength = 0;
+  while ((match = hashtagRegex.exec(cleaned)) !== null) {
+    lastHashtagIndex = match.index;
+    lastHashtagLength = match[0].length;
+  }
+  
+  if (lastHashtagIndex !== -1) {
+    const postHashtagText = cleaned.slice(lastHashtagIndex + lastHashtagLength).trim();
+    if (postHashtagText.length > 0 && !/#/g.test(postHashtagText)) {
+      cleaned = cleaned.slice(0, lastHashtagIndex + lastHashtagLength).trim();
+    }
+  }
+
+  return cleaned;
+}
 
 function scoreColor(score: number) {
   if (score >= 9) return "bg-green-500";
@@ -19,6 +64,7 @@ function scoreColor(score: number) {
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
   return (
     <Button
       size="sm"
@@ -26,7 +72,9 @@ function CopyButton({ text }: { text: string }) {
       onClick={() => {
         navigator.clipboard.writeText(text);
         setCopied(true);
-        toast.success("Copied to clipboard");
+        toast({
+          description: "Copied to clipboard",
+        });
         setTimeout(() => setCopied(false), 1500);
       }}
     >
@@ -36,11 +84,13 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function VoiceFingerprintCard({ fingerprint }: { fingerprint: string }) {
-  const lines = fingerprint
-    .split(/\n|\d\.\s/)
-    .map(s => s.trim())
-    .filter(Boolean);
+function VoiceFingerprintCard({ fingerprint }: { fingerprint: string[] | string }) {
+  const lines = Array.isArray(fingerprint)
+    ? fingerprint
+    : fingerprint
+        .split(/\n|\d\.\s|·\s*|- \s*/)
+        .map(s => s.trim())
+        .filter(Boolean);
   return (
     <Card className="p-5 border border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
       <div className="flex items-center gap-2 mb-3">
@@ -62,14 +112,94 @@ function VoiceFingerprintCard({ fingerprint }: { fingerprint: string }) {
   );
 }
 
+function RefinementBox({ baseText }: { baseText: string }) {
+  const [instruction, setInstruction] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [refined, setRefined] = useState("");
+  const { toast } = useToast();
+
+  const refine = async () => {
+    if (!instruction.trim()) return;
+    setLoading(true);
+    try {
+      const prompt = `You are an expert LinkedIn editor.
+Here is the original LinkedIn post:
+[START OF ORIGINAL POST]
+${baseText}
+[END OF ORIGINAL POST]
+
+The user wants to refine/modify this post with the following instruction:
+"${instruction}"
+
+CRITICAL INSTRUCTIONS:
+1. You MUST rewrite the post to fully incorporate the user's requested instruction. Do not return the original text unchanged.
+2. Incorporate the instruction naturally, preserving the author's overall voice but making the requested changes (e.g. adding a hook, adding a negative hook, shortening, adding emojis, adding Hindi phrases, etc.).
+3. You MUST NEVER stack a new opening line, introduction, or hook on top of an existing one (avoid double-hooking). If the refinement introduces a new starting sentence, question, or hook (either due to user request or tone adjustment), you MUST completely replace the original opening lines of the post rather than stacking them.
+4. You MUST preserve all hashtags (or ensure exactly 3-5 niche hashtags are present at the very bottom) from the original post, unless the user explicitly asks to remove them. Do NOT drop or delete hashtags.
+5. You MUST NOT include phantom links, placeholder links, or commands to "click the link", "tap the link", or "check the link" unless a link is explicitly present in the original post or requested by the user.
+6. Do NOT wrap your output in triple quotes ("""), double quotes, single quotes, or backticks.
+7. Do NOT output any markdown fences (like \`\`\`), labels, notes, or commentary.
+8. Return ONLY the plain text of the final revised post, starting directly with the first line of the post.`;
+      const resp = await (window as any).puter.ai.chat(prompt, { model: "gpt-4o-mini" });
+      const text = typeof resp === "string" ? resp : resp?.message?.content ?? resp?.text ?? JSON.stringify(resp);
+      setRefined(sanitize(text));
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        description: e?.message ?? "Refinement failed",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 border border-primary/20 rounded-xl p-4 bg-gradient-to-br from-primary/5 to-secondary/5 space-y-3">
+      <div className="flex items-center gap-2">
+        <MessageSquarePlus className="w-4 h-4 text-primary" />
+        <span className="text-sm font-semibold">Want any change?</span>
+        <span className="text-xs text-muted-foreground">Type in plain English — add emojis, change tone, shorten, add Hindi, anything.</span>
+      </div>
+      <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+        <Input
+          value={instruction}
+          onChange={e => setInstruction(e.target.value)}
+          placeholder='e.g. "add 2 emojis", "make it 30% shorter", "add a Hindi line at the end"'
+          onKeyDown={e => e.key === "Enter" && refine()}
+          className="text-sm"
+        />
+        <Button onClick={refine} disabled={loading || !instruction.trim()} className="min-h-[44px] shrink-0">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          Refine
+        </Button>
+      </div>
+      {refined && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-primary">✨ Your refined version</span>
+            <CopyButton text={refined} />
+          </div>
+          <div className="bg-background/80 border border-border p-4 rounded-lg text-sm whitespace-pre-wrap font-mono leading-relaxed">
+            {refined}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AuditReport({ result }: { result: AuditResult }) {
+  let displayOverall = result.overall;
+  if (displayOverall <= 10) displayOverall = displayOverall * 10;
+  const cleanRewritten = sanitize(result.rewritten);
+
   return (
     <Card className="p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="text-sm text-muted-foreground">Overall Score</div>
           <div className="text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            {result.overall}<span className="text-2xl text-muted-foreground">/100</span>
+            {displayOverall}<span className="text-2xl text-muted-foreground">/100</span>
           </div>
         </div>
         <Badge variant="secondary" className="text-sm px-3 py-2 max-w-md">{result.verdict}</Badge>
@@ -107,31 +237,131 @@ function AuditReport({ result }: { result: AuditResult }) {
           <h4 className="font-semibold flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" /> Rewritten 10/10 version
           </h4>
-          <CopyButton text={result.rewritten} />
+          <CopyButton text={cleanRewritten} />
         </div>
-        <div className="bg-muted/50 p-4 rounded-md whitespace-pre-wrap text-sm">
-          {result.rewritten}
+        <div className="bg-muted/50 p-4 rounded-md whitespace-pre-wrap text-sm font-mono leading-relaxed">
+          {cleanRewritten}
         </div>
+        <RefinementBox baseText={cleanRewritten} />
       </div>
     </Card>
   );
 }
 
-function TopicGenerator({ type }: { type: ContentType }) {
-  const [topic, setTopic] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<GenerateResult | null>(null);
+type GenState = "idle" | "loading" | "questions" | "answering" | "blocked" | "result";
 
+interface TopicGeneratorProps {
+  type: ContentType;
+  onUseGeneratedContent?: (text: string) => void;
+}
+
+function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
+  const [topic, setTopic] = useState("");
+  const [state, setState] = useState<GenState>("idle");
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<string[]>(["", "", "", ""]);
+  const [detectedName, setDetectedName] = useState("");
+  const [result, setResult] = useState<GenerateResult | null>(null);
+  const [statusMsg, setStatusMsg] = useState("");
+  const [blockReason, setBlockReason] = useState("");
+  const { toast } = useToast();
+
+  const reset = () => {
+    setState("idle");
+    setQuestions([]);
+    setAnswers(["", "", "", ""]);
+    setDetectedName("");
+    setResult(null);
+    setStatusMsg("");
+    setBlockReason("");
+  };
+
+  // Phase A: classify topic tier
   const run = async () => {
     if (!topic.trim()) return;
-    setLoading(true);
+    setState("loading");
+    setStatusMsg("Analysing your topic...");
     try {
-      const r = await generateContent({ type, topic });
-      setResult(r);
+      const tierResult = await scanTopicTier(topic);
+      const tier = tierResult.tier;
+
+      if (tier === "invalid") {
+        setBlockReason("This topic request appears to be invalid or low-effort gibberish. Please enter a valid topic or brand name.");
+        setState("blocked");
+        return;
+      }
+
+      if (tier === "general") {
+        setStatusMsg("Writing your post...");
+        const r = await generateContent({ type, topic });
+        setResult(r);
+        setState("result");
+      } else if (tier === "algocheat") {
+        setStatusMsg("Writing with product facts...");
+        const r = await generateForAlgoCheat({ type, topic });
+        setResult(r);
+        setState("result");
+      } else {
+        // unknown product — fetch smart questions
+        const name = tierResult.detectedName || "your product";
+        setDetectedName(name);
+        setStatusMsg("Fetching questions...");
+        const qResult = await getContextQuestions({ type, topic, detectedName: name });
+        setQuestions(qResult.questions);
+        setAnswers(new Array(qResult.questions.length).fill(""));
+        setState("questions");
+      }
     } catch (e: any) {
-      toast.error(e?.message ?? "Generation failed");
-    } finally {
-      setLoading(false);
+      toast({
+        variant: "destructive",
+        description: e?.message ?? "Generation failed",
+      });
+      setState("idle");
+    }
+  };
+
+  // Phase B: generate using user answers
+  const runWithAnswers = async () => {
+    const hasAnyAnswer = answers.some(a => a.trim().length > 0);
+    if (!hasAnyAnswer) {
+      setBlockReason("Please answer at least one question so I can write an authentic post.");
+      setState("blocked");
+      return;
+    }
+    setState("loading");
+    setStatusMsg("Validating your responses...");
+    try {
+      // 1. Coherence & intent check
+      const validation = await validateUserAnswers({
+        topic,
+        detectedName,
+        questions,
+        answers,
+      });
+
+      if (!validation.valid) {
+        setBlockReason(validation.reason || "The details provided are not coherent enough to write a post. Please try adding more detail.");
+        setState("blocked");
+        return;
+      }
+
+      // 2. If valid, run generation
+      setStatusMsg("Writing your post with your story...");
+      const r = await generateWithUserContext({
+        type,
+        topic,
+        detectedName,
+        questions,
+        answers,
+      });
+      setResult(r);
+      setState("result");
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        description: e?.message ?? "Generation failed",
+      });
+      setState("questions");
     }
   };
 
@@ -139,45 +369,173 @@ function TopicGenerator({ type }: { type: ContentType }) {
     <Card className="p-6 bg-gradient-to-br from-primary/5 to-secondary/5 space-y-4">
       <div>
         <h3 className="text-xl font-semibold flex items-center gap-2">
-          <Zap className="w-5 h-5 text-primary" /> Want 10/10 content on a topic?
+          <Zap className="w-5 h-5 text-primary" /> Do you have a topic in mind? Or what do you want to write today?
         </h3>
         <p className="text-sm text-muted-foreground">
-          Drop a topic, niche, or angle and get an instantly audited 10/10 {RUBRICS[type].label}.
+          Drop a topic, niche, or angle and get an instant {RUBRICS[type].label.toLowerCase()} that you can push to the audit tool.
         </p>
       </div>
-      <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-        <Input
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-          placeholder="e.g. how vertical SaaS founders should hire their first AE"
-          onKeyDown={(e) => e.key === "Enter" && run()}
-        />
-        <Button onClick={run} disabled={loading || !topic.trim()}>
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          Generate
-        </Button>
-      </div>
-      {result && (
+
+      {/* STATE: idle or loading */}
+      {(state === "idle" || state === "loading") && (
+        <>
+          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+            <Input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g. why founders need LinkedIn in 2026, or: launch post for [your product]"
+              onKeyDown={(e) => e.key === "Enter" && state === "idle" && run()}
+              disabled={state === "loading"}
+            />
+            <Button onClick={run} disabled={state === "loading" || !topic.trim()}>
+              {state === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              Generate
+            </Button>
+          </div>
+          {state === "loading" && (
+            <p className="text-xs text-primary animate-pulse">{statusMsg}</p>
+          )}
+        </>
+      )}
+
+      {/* STATE: questions — unknown product detected */}
+      {(state === "questions" || state === "blocked") && (
+        <div className="space-y-5">
+          {questions.length > 0 && (
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/10 border border-primary/20">
+              <span className="text-xl mt-0.5">🎙️</span>
+              <div>
+                <p className="font-semibold text-sm">
+                  Tell me about <span className="text-primary">{detectedName}</span> — I'd rather ask than guess.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  I don't have data on this product. Answer below and I'll write something that's actually true and powerful.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {state === "blocked" && (
+            <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-sm text-destructive">
+              <p className="font-semibold mb-1">⛔ Validation Check Failed</p>
+              <p className="mb-2">{blockReason}</p>
+              {questions.length > 0 && (
+                <p className="text-xs opacity-80">
+                  Since <strong>{detectedName}</strong> is a custom product or startup idea, I need real details to write an authentic, high-value LinkedIn post. I refuse to hallucinate or invent features. Please write at least 1-2 descriptive sentences above.
+                </p>
+              )}
+            </div>
+          )}
+
+          {questions.length > 0 && (
+            <div className="space-y-4">
+              {questions.map((q, i) => (
+                <div key={i} className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground/80">{q}</label>
+                  <textarea
+                    className="w-full min-h-[72px] text-sm p-3 rounded-lg border border-border bg-background/80 resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Your answer..."
+                    value={answers[i] ?? ""}
+                    onChange={e => {
+                      const updated = [...answers];
+                      updated[i] = e.target.value;
+                      setAnswers(updated);
+                      if (state === "blocked") setState("questions");
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-3 flex-wrap">
+            {questions.length > 0 && (
+              <Button
+                onClick={runWithAnswers}
+                className="bg-gradient-to-r from-primary to-primary-glow text-primary-foreground hover:opacity-90 shadow-mint"
+              >
+                <Sparkles className="w-4 h-4" />
+                Generate My Post
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={reset}>
+              ← Start over
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* STATE: loading after answers submitted */}
+      {state === "loading" && statusMsg && (
+        <p className="text-xs text-primary animate-pulse">{statusMsg}</p>
+      )}
+
+      {/* STATE: result */}
+      {state === "result" && result && (
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
             <Badge className="bg-green-500 hover:bg-green-500">Predicted 100/100</Badge>
-            <CopyButton text={result.content} />
+            <CopyButton text={sanitize(result.content)} />
           </div>
-          <div className="bg-background p-4 rounded-md whitespace-pre-wrap text-sm border">
-            {result.content}
+          <div className="bg-background p-4 rounded-md whitespace-pre-wrap text-sm font-mono leading-relaxed border">
+            {sanitize(result.content)}
           </div>
           <p className="text-xs text-muted-foreground italic">{result.notes}</p>
+          <div className="flex gap-3 items-center flex-wrap pt-2 border-t">
+            <Button variant="outline" size="sm" onClick={reset}>← Write another</Button>
+            {onUseGeneratedContent && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onUseGeneratedContent(sanitize(result.content))}
+                className="bg-primary/20 text-foreground hover:bg-primary/30"
+              >
+                ⚡ Load into Audit Tool
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </Card>
   );
 }
 
+const TOOL_CARDS = [
+  {
+    icon: FileText,
+    title: "Text Post Audit",
+    emoji: "📝",
+    what: "Pure text drafts — hooks, structure, voice & engagement",
+    when: "When your post has no image or video",
+    scores: "Hook · Dwell-Time · Voice · Value · Arc · CTA · Hashtags · SEO · Penalties · Shareability",
+    type: "text" as ContentType,
+  },
+  {
+    icon: ImageIcon,
+    title: "Image Post Audit",
+    emoji: "🖼️",
+    what: "Caption + visual synergy for carousels & single images",
+    when: "When your post has a graphic, photo or carousel",
+    scores: "Hook · Caption–Image Synergy · Voice · Value · Arc · CTA · Hashtags · SEO · Penalties · Visual Hook",
+    type: "image" as ContentType,
+  },
+  {
+    icon: BookOpen,
+    title: "Article Audit",
+    emoji: "📖",
+    what: "Long-form LinkedIn articles optimized for SEO & authority",
+    when: "When publishing a LinkedIn Newsletter or Article",
+    scores: "SEO Title · Subheads · Voice · Value · Arc · TL;DR · Meta · Internal Links · Citations · Saveability",
+    type: "article" as ContentType,
+  },
+];
+
 function AuditPanel({ type }: { type: ContentType }) {
   const [content, setContent] = useState("");
   const [imageDesc, setImageDesc] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AuditResult | null>(null);
+  const { toast } = useToast();
 
   const run = async () => {
     if (!content.trim()) return;
@@ -186,7 +544,10 @@ function AuditPanel({ type }: { type: ContentType }) {
       const r = await auditContent({ type, content, imageDescription: imageDesc });
       setResult(r);
     } catch (e: any) {
-      toast.error(e?.message ?? "Audit failed");
+      toast({
+        variant: "destructive",
+        description: e?.message ?? "Audit failed",
+      });
     } finally {
       setLoading(false);
     }
@@ -196,6 +557,7 @@ function AuditPanel({ type }: { type: ContentType }) {
     <div className="space-y-6">
       <Card className="p-6 space-y-4">
         <Textarea
+          id={`content-lab-textarea-${type}`}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder={`Paste your ${RUBRICS[type].label.toLowerCase()} here...`}
@@ -212,15 +574,36 @@ function AuditPanel({ type }: { type: ContentType }) {
           <p className="text-xs text-muted-foreground">
             Scored on 10 strict 2026 LinkedIn algorithm parameters · Calibrated on Organic Dwell Time
           </p>
-          <Button onClick={run} disabled={loading || !content.trim()} className="min-h-[44px]">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            Run Audit
-          </Button>
+          <div className="flex items-center gap-2">
+            {content && (
+              <Button
+                variant="outline"
+                onClick={() => setContent("")}
+                disabled={loading}
+                className="min-h-[44px]"
+              >
+                Clear
+              </Button>
+            )}
+            <Button onClick={run} disabled={loading || !content.trim()} className="min-h-[44px]">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              Run Audit
+            </Button>
+          </div>
         </div>
       </Card>
 
       {result && <AuditReport result={result} />}
-      {result && <TopicGenerator type={type} />}
+      <TopicGenerator
+        type={type}
+        onUseGeneratedContent={(text) => {
+          setContent(text);
+          toast({
+            description: "Loaded post into the Audit Box above!",
+          });
+          document.getElementById(`content-lab-textarea-${type}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }}
+      />
     </div>
   );
 }
@@ -232,9 +615,24 @@ export function ContentLab() {
         <Badge variant="secondary" className="mb-3">AlgoCheat Proprietary Engine · 100% Private Data Audits</Badge>
         <h2 className="text-3xl md:text-4xl font-bold mb-3">AlgoCheat AI Content Lab</h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Paste any LinkedIn draft and get a strict 10-parameter audit based on the 2026 algorithm.
-          Then generate 10/10 audited content on any topic — instantly and with full organic reach capability.
+          Three specialized audit tools — each calibrated to the exact 2026 LinkedIn algorithm rules for that content type.
+          Pick yours, paste your draft, get a 10-parameter score + a voice-preserved rewrite.
         </p>
+      </div>
+
+      {/* 3-Tool Explainer Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {TOOL_CARDS.map((tool) => (
+          <Card key={tool.type} className="p-5 border border-border/60 hover:border-primary/40 transition-colors bg-card/60">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-lg">{tool.emoji}</div>
+              <h3 className="font-semibold text-sm">{tool.title}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">{tool.what}</p>
+            <p className="text-xs text-primary/70 mb-3"><span className="font-medium">Use when:</span> {tool.when}</p>
+            <p className="text-[10px] text-muted-foreground/60 leading-relaxed border-t border-border/40 pt-2">{tool.scores}</p>
+          </Card>
+        ))}
       </div>
 
       <Tabs defaultValue="text" className="w-full">

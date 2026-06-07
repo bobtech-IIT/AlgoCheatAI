@@ -1,73 +1,80 @@
-# Welcome to your Lovable project
+# 🚀 AlgoCheat AI — The 2026 LinkedIn Algorithm Cheat Code
 
-## Project info
+**AlgoCheat AI** is a free, PWA-ready, privacy-first LinkedIn content auditor and optimizer. It analyzes your posts against 10 strict 2026 LinkedIn algorithm parameters, detects your personal writing voice fingerprint, and provides a 10/10 optimized rewrite that sounds like *you*—not ChatGPT.
 
-**URL**: https://lovable.dev/projects/a948cc06-3749-465b-b682-e52f1b6194ed
+---
 
-## How can I edit this code?
+## 🛠️ Key Features
 
-There are several ways of editing your application.
+*   **📝 Text Post Audit:** Tailored for text-only posts; scores hooks, dwell-time layouts, authentic voice, value density, narrative arcs, and conversation triggers.
+*   **🖼️ Image Post Audit:** Optimizes graphics, photo posts, and multi-page carousels, checking caption-image synergy and alt-text accessibility.
+*   **📖 Article Audit:** Calibrated for long-form LinkedIn articles and newsletters, checking SEO titles, meta-descriptions, subhead hierarchy, and tl;dr blocks.
+*   **✍️ The Refinement Engine ("Want any change?"):** Type instructions in plain English (e.g., *"add emojis"*, *"make it 30% shorter"*, *"add a Hindi line at the end"*). It features:
+    *   **Double-Hook Prevention:** Replaces hook lines instead of stacking them.
+    *   **Hashtag Preservation:** Retains niche hashtags at the bottom during edits.
+    *   **Phantom Link Prevention:** Blocks AI from hallucinating *"click the link"* language when no link is provided.
+*   **🤖 Predicted 100/100 Generator:** Drop a topic, niche, or angle, answer 4 quick founder questions, and get a ready-to-publish post.
+*   **🧠 Automatic Sanitizer Safety Net:** Deteminstically strips out trailing AI self-evaluations and footnotes (e.g. *"This post scores highly..."*) before displaying or copying.
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/a948cc06-3749-465b-b682-e52f1b6194ed) and start prompting.
+## 🔒 Security & Logic Protection Architecture
 
-Changes made via Lovable will be committed automatically to this repo.
+AlgoCheat is built with a secure **Double-Guard Architecture** protecting proprietary prompt engineering and dynamic tokens:
 
-**Use your preferred IDE**
+```mermaid
+sequenceDiagram
+    participant Client as Browser (React/PWA)
+    participant Serverless as Backend (Vercel API)
+    participant Puter as Puter.js API Gateway
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+    Client->>Serverless: POST /api/audit (Content + Auth Bearer Token)
+    Note over Serverless: 1. Validate inputs (Scan for Gibberish/Nonsense)<br/>2. Retrieve bear token from headers
+    Note over Serverless: 3. Dynamic Puter initialization in sandboxed VM
+    Note over Serverless: 4. Build proprietary prompts (Hidden from Client)
+    Serverless->>Puter: puter.ai.chat(Proprietary Prompt)
+    Puter-->>Serverless: Return Raw JSON
+    Note over Serverless: 5. Parse and sanitize response
+    Serverless-->>Client: Return JSON payload (overall, verdict, rewritten)
+    Note over Client: 6. Apply final regex safety strip
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1.  **Prompts-as-a-Service (PaaS):** proprietary system prompts are stored entirely on the serverless backend (`api/shared.js`) to keep them hidden from browser DevTools inspect panels.
+2.  **Dynamic Sandboxed Puter Clients:** Puter auth tokens are passed via Bearer headers and loaded dynamically in secure sandboxed VMs (`vm.createContext`) on Vercel endpoints, preventing token leakages.
+3.  **Edge Scanners:** Checks inputs for gibberish/spam to prevent prompt injections and resource abuse.
+4.  **Iframe Protections:** Employs strict CSP `frame-ancestors 'none'` and `X-Frame-Options: DENY` configurations to block clickjacking wrappers.
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 💻 Tech Stack
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+*   **Frontend:** React (TypeScript) + Vite PWA
+*   **Styling:** Tailwind CSS + Shadcn UI
+*   **Core SDK:** Puter.js (client-side LLM gateway)
+*   **Hosting & Backend:** Vercel (Serverless Functions)
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## 🚀 Local Development
+
+Follow these steps to run and build the application locally:
+
+### 1. Install Dependencies
+```bash
+npm install
+```
+
+### 2. Run the Development Server
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### 3. Build for Production
+```bash
+npm run build
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/a948cc06-3749-465b-b682-e52f1b6194ed) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### 4. Deploy to Vercel
+```bash
+npx vercel --prod
+```

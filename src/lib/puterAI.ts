@@ -1,17 +1,4 @@
-import { buildAuditPrompt, buildGeneratePrompt, ContentType } from "./auditRubrics";
-
-declare global {
-  interface Window {
-    puter?: {
-      ai: {
-        chat: (
-          prompt: string,
-          options?: { model?: string; stream?: boolean }
-        ) => Promise<any>;
-      };
-    };
-  }
-}
+import { ContentType } from "./auditRubrics";
 
 export interface AuditScore {
   key: string;
@@ -25,7 +12,7 @@ export interface AuditResult {
   overall: number;
   verdict: string;
   scores: AuditScore[];
-  voiceFingerprint?: string;
+  voiceFingerprint?: string[] | string;
   rewritten: string;
 }
 
@@ -34,54 +21,65 @@ export interface GenerateResult {
   notes: string;
 }
 
-const MODEL = "gpt-5-nano";
+export interface TierScanResult {
+  tier: "general" | "algocheat" | "unknown" | "invalid";
+  detectedName?: string;
+  reasoning?: string;
+}
 
-function ensurePuter() {
-  if (typeof window === "undefined" || !window.puter?.ai?.chat) {
-    throw new Error(
-      "Puter.js is still loading. Refresh the page in a second and try again."
-    );
+/**
+ * Robustly retrieves the Puter guest session token or logged-in token.
+ * Polls for initialization up to 5 seconds.
+ */
+async function getAuthToken(): Promise<string> {
+  if (typeof window === "undefined") {
+    throw new Error("Client-only execution context");
   }
-}
 
-function extractText(resp: any): string {
-  if (typeof resp === "string") return resp;
-  if (resp?.message?.content) {
-    const c = resp.message.content;
-    if (typeof c === "string") return c;
-    if (Array.isArray(c)) return c.map((x: any) => x.text ?? "").join("");
-  }
-  if (resp?.text) return resp.text;
-  if (resp?.toString) return resp.toString();
-  return JSON.stringify(resp);
-}
-
-function parseJSON<T>(raw: string): T {
-  const cleaned = raw
-    .trim()
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```$/i, "")
-    .trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  const slice = start >= 0 && end >= 0 ? cleaned.slice(start, end + 1) : cleaned;
-  return JSON.parse(slice) as T;
-}
-
-async function callPuter<T>(prompt: string): Promise<T> {
-  ensurePuter();
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const resp = await window.puter!.ai.chat(prompt, { model: MODEL });
-      const text = extractText(resp);
-      return parseJSON<T>(text);
-    } catch (e) {
-      lastErr = e;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const puter = (window as any).puter;
+    if (puter?.authToken) {
+      return puter.authToken;
     }
+    const stored = localStorage.getItem("puter.auth.token.v2");
+    if (stored) {
+      return stored;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw lastErr instanceof Error ? lastErr : new Error("AI request failed");
+
+  throw new Error(
+    "Puter.js authentication context is still loading. Please refresh or check your internet connection."
+  );
+}
+
+/**
+ * Shared HTTP POST client helper for hitting Vercel serverless functions
+ */
+async function callAPI<T>(endpoint: string, payload: any): Promise<T> {
+  const token = await getAuthToken();
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    let errMsg = `HTTP Error ${response.status}`;
+    try {
+      const parsed = JSON.parse(errText);
+      errMsg = parsed.message || parsed.error || errMsg;
+    } catch {
+      // ignore
+    }
+    throw new Error(errMsg);
+  }
+
+  return response.json() as Promise<T>;
 }
 
 export function auditContent(args: {
@@ -89,11 +87,44 @@ export function auditContent(args: {
   content: string;
   imageDescription?: string;
 }) {
-  const prompt = buildAuditPrompt(args.type, args.content, args.imageDescription);
-  return callPuter<AuditResult>(prompt);
+  return callAPI<AuditResult>("/api/audit", args);
 }
 
 export function generateContent(args: { type: ContentType; topic: string }) {
-  const prompt = buildGeneratePrompt(args.type, args.topic);
-  return callPuter<GenerateResult>(prompt);
+  return callAPI<GenerateResult>("/api/generate", args);
+}
+
+export function scanTopicTier(topic: string): Promise<TierScanResult> {
+  return callAPI<TierScanResult>("/api/scan", { topic });
+}
+
+export function generateForAlgoCheat(args: { type: ContentType; topic: string }) {
+  return callAPI<GenerateResult>("/api/generate-algocheat", args);
+}
+
+export function getContextQuestions(args: {
+  type: ContentType;
+  topic: string;
+  detectedName: string;
+}) {
+  return callAPI<{ questions: string[] }>("/api/questions", args);
+}
+
+export function generateWithUserContext(args: {
+  type: ContentType;
+  topic: string;
+  detectedName: string;
+  questions: string[];
+  answers: string[];
+}) {
+  return callAPI<GenerateResult>("/api/generate-user-context", args);
+}
+
+export function validateUserAnswers(args: {
+  topic: string;
+  detectedName: string;
+  questions: string[];
+  answers: string[];
+}) {
+  return callAPI<{ valid: boolean; reason?: string }>("/api/validate", args);
 }
