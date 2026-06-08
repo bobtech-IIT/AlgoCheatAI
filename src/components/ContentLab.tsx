@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap, MessageSquarePlus, ShieldCheck, X } from "lucide-react";
-import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, triggerPuterSignIn, hasPuterToken, AuditResult, GenerateResult } from "@/lib/puterAI";
+import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, triggerPuterSignIn, AuditResult, GenerateResult } from "@/lib/puterAI";
 import { ContentType, RUBRICS } from "@/lib/auditRubrics";
 import { useToast } from "@/hooks/use-toast";
 import { useRAG } from "@/hooks/useRAG";
@@ -125,19 +125,6 @@ function RefinementBox({ baseText }: { baseText: string }) {
     if (!instruction.trim()) return;
     setLoading(true);
     try {
-      if (!hasPuterToken()) {
-        if ((window as any).showPuterAuthDialog) {
-          (window as any).showPuterAuthDialog("welcome", refine);
-        } else {
-          toast({
-            variant: "destructive",
-            description: "Puter session not initialized. Please click Run Audit first.",
-          });
-        }
-        setLoading(false);
-        return;
-      }
-
       const prompt = `You are an expert LinkedIn editor.
 Here is the original LinkedIn post:
 [START OF ORIGINAL POST]
@@ -309,19 +296,6 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
     setState("loading");
     setStatusMsg("Analysing your topic...");
     try {
-      if (!hasPuterToken()) {
-        if ((window as any).showPuterAuthDialog) {
-          (window as any).showPuterAuthDialog("welcome", run);
-        } else {
-          toast({
-            variant: "destructive",
-            description: "Puter session not initialized. Please click Run Audit first.",
-          });
-        }
-        setState("idle");
-        return;
-      }
-
       // Semantic RAG Search Context
       let augTopic = topic;
       if (isReady) {
@@ -395,19 +369,6 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
     setState("loading");
     setStatusMsg("Validating your responses...");
     try {
-      if (!hasPuterToken()) {
-        if ((window as any).showPuterAuthDialog) {
-          (window as any).showPuterAuthDialog("welcome", runWithAnswers);
-        } else {
-          toast({
-            variant: "destructive",
-            description: "Puter session not initialized. Please click Run Audit first.",
-          });
-        }
-        setState("questions");
-        return;
-      }
-
       // 1. Coherence & intent check
       const validation = await validateUserAnswers({
         topic,
@@ -625,19 +586,6 @@ function AuditPanel({ type }: { type: ContentType }) {
     if (!content.trim()) return;
     setLoading(true);
     try {
-      if (!hasPuterToken()) {
-        if ((window as any).showPuterAuthDialog) {
-          (window as any).showPuterAuthDialog("welcome", run);
-        } else {
-          toast({
-            variant: "destructive",
-            description: "Puter session not initialized. Please try again.",
-          });
-        }
-        setLoading(false);
-        return;
-      }
-
       const r = await auditContent({ type, content, imageDescription: imageDesc });
       setResult(r);
     } catch (e: any) {
