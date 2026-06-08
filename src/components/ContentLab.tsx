@@ -731,14 +731,14 @@ function KnowledgeBasePanel() {
       const docId = `doc-${Date.now()}`;
       await indexDocument(docId, docName.trim(), text.trim());
       toast({
-        description: `Successfully chunked, embedded and saved "${docName}" to Vector DB!`,
+        description: `Successfully saved "${docName}" to your knowledge base!`,
       });
       setDocName("");
       setText("");
     } catch (err: any) {
       toast({
         variant: "destructive",
-        description: err.message || "Failed to index document.",
+        description: err.message || "Failed to save document.",
       });
     }
   };
@@ -747,19 +747,19 @@ function KnowledgeBasePanel() {
     <Card className="p-6 space-y-6 bg-gradient-to-br from-primary/5 to-secondary/5">
       <div className="space-y-2">
         <h3 className="text-xl font-semibold flex items-center gap-2">
-          <Zap className="w-5 h-5 text-primary animate-pulse" /> RAG Knowledge Base (Vector Database)
+          <Zap className="w-5 h-5 text-primary animate-pulse" /> Train Me
         </h3>
         <p className="text-sm text-muted-foreground">
-          Index your product specifications, past viral posts, or brand style guides. The AI will automatically search this database using local vector semantic matching and use the facts to write your posts!
+          Upload your product specifications, past high-performing posts, or brand guidelines. The AI will automatically reference this intelligence to calibrate and align your content with your brand voice and factual assets.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
         {/* Left Side: Upload / Paste */}
         <div className="space-y-4">
-          <h4 className="font-semibold text-sm">Add New Knowledge Document</h4>
+          <h4 className="font-semibold text-sm">Add Stored Assets</h4>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Document Name / Source</label>
+            <label className="text-xs font-medium text-muted-foreground">Asset Name / Source</label>
             <Input
               value={docName}
               onChange={(e) => setDocName(e.target.value)}
@@ -767,7 +767,7 @@ function KnowledgeBasePanel() {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Document Content</label>
+            <label className="text-xs font-medium text-muted-foreground">Asset Content</label>
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -779,24 +779,24 @@ function KnowledgeBasePanel() {
             {indexing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Chunking & Generating Embeddings...
+                Uploading & Calibrating AI...
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4 mr-2" />
-                Index Document into Vector DB
+                Upload to Knowledge Base
               </>
             )}
           </Button>
         </div>
 
-        {/* Right Side: Vector DB Stats and List */}
+        {/* Right Side: Stats and List */}
         <div className="space-y-4 border-t md:border-t-0 md:border-l md:pl-6 pt-4 md:pt-0">
           <div className="flex justify-between items-center">
-            <h4 className="font-semibold text-sm">Stored Documents ({docCount})</h4>
+            <h4 className="font-semibold text-sm">Stored Assets ({docCount})</h4>
             {indexedDocs.length > 0 && (
               <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 text-xs h-7 px-2" onClick={clearDatabase}>
-                Wipe DB
+                Wipe Stored Assets
               </Button>
             )}
           </div>
@@ -804,9 +804,9 @@ function KnowledgeBasePanel() {
           {indexedDocs.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-lg bg-background/50 text-center">
               <span className="text-2xl mb-2">📁</span>
-              <p className="text-xs font-medium text-muted-foreground">Vector database is empty</p>
+              <p className="text-xs font-medium text-muted-foreground">No custom knowledge assets uploaded yet</p>
               <p className="text-[10px] text-muted-foreground/60 max-w-[200px] mt-1">
-                Index specs or style guides on the left to activate Retrieval-Augmented Generation!
+                Upload specs or style guides on the left to train your AI with custom brand data!
               </p>
             </div>
           ) : (
@@ -815,7 +815,7 @@ function KnowledgeBasePanel() {
                 <div key={doc.id} className="flex justify-between items-center p-3 rounded-lg border bg-background/60 text-xs">
                   <div className="truncate max-w-[80%] pr-2">
                     <p className="font-medium truncate">{doc.name}</p>
-                    <p className="text-[10px] text-muted-foreground">Local Vector Index: {doc.id}</p>
+                    <p className="text-[10px] text-muted-foreground">Stored Reference: {doc.id}</p>
                   </div>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => deleteDocument(doc.id)}>
                     ✕
@@ -900,7 +900,7 @@ export function ContentLab() {
           <TabsTrigger value="text" className="gap-1.5 py-2.5"><FileText className="w-4 h-4" /><span className="hidden sm:inline">Text Post</span></TabsTrigger>
           <TabsTrigger value="image" className="gap-1.5 py-2.5"><ImageIcon className="w-4 h-4" /><span className="hidden sm:inline">Image Post</span></TabsTrigger>
           <TabsTrigger value="article" className="gap-1.5 py-2.5"><BookOpen className="w-4 h-4" /><span className="hidden sm:inline">Article</span></TabsTrigger>
-          <TabsTrigger value="kb" className="gap-1.5 py-2.5"><Zap className="w-4 h-4 text-primary" /><span className="hidden sm:inline">Knowledge Base (RAG)</span></TabsTrigger>
+          <TabsTrigger value="kb" className="gap-1.5 py-2.5"><Zap className="w-4 h-4 text-primary" /><span className="hidden sm:inline">Upload</span></TabsTrigger>
         </TabsList>
         <TabsContent value="text"><AuditPanel type="text" /></TabsContent>
         <TabsContent value="image"><AuditPanel type="image" /></TabsContent>

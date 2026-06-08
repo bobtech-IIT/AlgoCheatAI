@@ -190,16 +190,17 @@ Classify this topic into EXACTLY ONE of these four tiers:
 TIER 1 - GENERAL: The topic is about a widely known subject you can write about
 accurately using training knowledge. Examples: AI trends, leadership, LinkedIn growth,
 MBA careers, SaaS, productivity, personal branding, startup advice, corporate skills,
-future of work, problem solving, business strategy.
+future of work, problem solving, business strategy, general technology concepts (e.g. RAG,
+vector databases, embeddings, APIs, databases, software development, cloud hosting, PWA).
 
 TIER 2 - ALGOCHEAT: The topic explicitly mentions AlgoCheat AI, "my LinkedIn tool",
 "this audit tool", or clearly refers to the AlgoCheat AI product described above.
 
-TIER 3 - UNKNOWN: The topic mentions a specific, legitimate custom product, startup, company, app,
+TIER 3 - UNKNOWN: The topic mentions a specific, custom proprietary product, startup, company, app,
 personal brand, individual person, or service that is NOT AlgoCheat AI and is NOT
-a widely known public entity. You have zero accurate data about it, but the user's intent is to write a launch post or brainstorm about it.
+a widely known public entity or general technology concept. You have zero accurate data about it, but the user's intent is to write a launch post or brainstorm about it.
 Examples: "Sumoo AI", "my startup XYZ", "my coaching brand", "our new SaaS product",
-"the app I am launching".
+"the app I am launching". Do NOT classify general terms like "RAG", "Vector Database", "API", or "database" here.
 
 TIER 4 - INVALID: The topic request is gibberish, keyboard mashing, spam, random single words that don't make sense, or nonsense designed to bypass or trick the system.
 Examples: "asldsadaldlj", "asdfasdf", "qwerty", "test", "hello", "asdf", "g", "foo".
