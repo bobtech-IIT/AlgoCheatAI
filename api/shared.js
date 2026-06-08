@@ -46,7 +46,9 @@ export function parseJSON(raw) {
 
 export async function callPuterAI(puterWrapper, prompt) {
   const openAIKey = process.env.OPENAI_API_KEY;
-  if (openAIKey) {
+  const hasValidOpenAIKey = openAIKey && openAIKey.trim().startsWith("sk-");
+
+  if (hasValidOpenAIKey) {
     try {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -67,52 +69,19 @@ export async function callPuterAI(puterWrapper, prompt) {
         const text = data.choices[0].message.content;
         return parseJSON(text);
       }
-      console.warn(`Direct OpenAI API call failed with status ${response.status}. Falling back to Puter REST API.`);
+      const errText = await response.text();
+      console.warn(`Direct OpenAI API call failed with status ${response.status}: ${errText}`);
     } catch (err) {
-      console.warn("Direct OpenAI API call failed, falling back to Puter REST API:", err);
+      console.warn("Direct OpenAI API call failed:", err);
     }
   }
 
-  // Fallback to Puter.js REST API (OpenAI-compatible)
-  const token = puterWrapper?.token;
-  if (!token || token === "no-token-available") {
-    const err = new Error("Puter session is inactive or expired. Please sign in to AlgoCheat AI to get free AI credits.");
-    err.status = 401;
-    throw err;
-  }
-
-  const response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-
-  if (response.status === 402) {
-    const err = new Error("insufficient_funds");
-    err.status = 402;
-    throw err;
-  }
-
-  if (response.status === 401) {
-    const err = new Error("unauthorized");
-    err.status = 401;
-    throw err;
-  }
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Puter AI REST call failed (${response.status}): ${errText}`);
-  }
-
-  const data = await response.json();
-  const text = data.choices[0].message.content;
-  return parseJSON(text);
+  // If we reach here, direct OpenAI is unavailable or has failed.
+  // Instead of calling Puter's REST API (which throws 403 forbidden for guest user sessions from backend),
+  // we throw a 503 error to trigger client-side Puter AI fallback.
+  const err = new Error("backend_openai_unavailable");
+  err.status = 503;
+  throw err;
 }
 
 

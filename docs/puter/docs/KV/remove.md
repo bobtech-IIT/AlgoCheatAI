@@ -1,0 +1,68 @@
+# puter.kv.remove()
+
+Source: https://docs.puter.com/KV/remove/
+
+Copy page
+
+Markdown
+View as Markdown
+
+OpenAI
+Open in ChatGPT
+
+Anthropic
+Open in Claude
+
+# ![Image](/./assets/img/function.svg)`puter.kv.remove()`
+
+ Websites Puter Apps Node.js Workers
+
+---
+
+Remove values from an existing key by path. Paths use dot notation to target nested fields.
+
+## Syntax
+
+```js
+puter.kv.remove(key, ...paths)
+```
+
+## Parameters
+
+#### `key` (String) (required)
+
+The key to remove values from.
+
+#### `paths` (String[]) (required)
+
+One or more dot-separated paths to remove (for example, `"profile.bio"`).
+
+## Return value
+
+Returns a `Promise` that resolves to the updated value stored at `key`.
+
+## Examples
+
+**Remove nested fields from an object**
+
+```html
+<html>
+<body>
+    <script src="https://js.puter.com/v2/"></script>
+    <script>
+        (async () => {
+            await puter.kv.set('profile', { name: 'Puter', stats: { score: 10, level: 2 } });
+
+            const updated = await puter.kv.remove('profile', 'stats.score');
+            puter.print(`Updated profile: ${JSON.stringify(updated)}`);
+        })();
+    </script>
+</body>
+</html>
+```
+
+[NEXT
+
+`update()`](/./KV/update/)[PREVIOUS
+
+`add()`](/./KV/add/)

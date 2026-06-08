@@ -1,0 +1,126 @@
+# puter.workers.create()
+
+Source: https://docs.puter.com/Workers/create/
+
+Copy page
+
+Markdown
+View as Markdown
+
+OpenAI
+Open in ChatGPT
+
+Anthropic
+Open in Claude
+
+# ![Image](/./assets/img/function.svg)`puter.workers.create()`
+
+ Websites Puter Apps Node.js Workers
+
+---
+
+Creates and deploys a new worker from a JavaScript file containing [router](../router) code.
+
+A worker is tied to its  **name** : you create it  **once**  and keep that name. To deploy changes, don't call `create()` again with a new name â instead overwrite the worker's source file (see [Updating a worker](#updating-a-worker) below). Recreating under a different name leaves the old worker live at its old URL while your callers end up pointing at an orphaned one.
+
+To create a worker, you'll need a [Puter account](https://puter.com/) with a verified email address. After a worker is created or updated, full propagation may take between 5 and 30 seconds to take effect across all edge servers.
+
+## Syntax
+
+```js
+puter.workers.create(workerName, filePath)
+```
+
+## Parameters
+
+#### `workerName` (String)(Required)
+
+The name for the worker. It can contain letters, numbers, hyphens, and underscores.
+
+#### `filePath` (String)(Required)
+
+The path to a JavaScript file in your Puter account that contains your [router](../router) code.
+
+Workers cannot be larger than  **10MB** .
+
+## Return Value
+
+A `Promise` that resolves to a [`WorkerDeployment`](/Objects/workerdeployment) object on success.
+
+On failure, throws an `Error` with the reason.
+
+## Examples
+
+**Basic Syntax**
+
+```js
+// Create a new worker from a file in your Puter account
+puter.workers.create('my-api', 'api-server.js')
+    .then(result => {
+        console.log(`Worker deployed at: ${result.url}`);
+    })
+    .catch(error => {
+        console.error('Deployment failed:', error.message);
+    });
+```
+
+**Complete Example**
+
+```html
+<html>
+<body>
+    <script src="https://js.puter.com/v2/"></script>
+    <script>
+    (async () => {
+        // 1. Create a worker file in your Puter account.
+        puter.print('â Writing the worker code to my-worker.js<br>');
+        const workerCode = `
+        // A router for /api/hello
+        router.get('/api/hello', async (event) => {
+            return 'Hello from worker!';
+        });
+        `;
+
+        // Save the worker code to my-worker.js in your Puter account
+        await puter.fs.write('my-worker.js', workerCode);
+
+        // 2. Deploy the worker using the file path
+        const workerName = puter.randName();
+        puter.print(`â Deploying ${workerName} worker. May take up to 10 seconds to deploy.<br>`);
+        const deployment = await puter.workers.create(workerName, 'my-worker.js');
+        
+        // 3. Test the worker
+        puter.print(`â Wait 5 seconds before testing the worker to make sure it's propagated.<br>`);
+
+        setTimeout(async ()=>{
+            const response = await fetch(`${deployment.url}/api/hello`);
+            puter.print('â Test response: ', await response.text());
+        }, 5000);
+    })();
+    </script>
+</body>
+</html>
+```
+
+## Updating a worker
+
+A worker keeps the same name and URL for its whole lifetime. You create it once with `create()`; after that, you  **update it by overwriting its source file** , not by creating a new worker.
+
+[`puter.workers.get()`](/Workers/get/) returns the worker's [`file_path`](/Objects/workerinfo), so you can write your new code back to it:
+
+```js
+// Look up the deployed worker's source file
+const info = await puter.workers.get('my-api');
+
+// Overwrite it with your new code â this redeploys the worker
+// at the same name and URL
+await puter.fs.write(info.file_path, updatedWorkerCode);
+```
+
+The worker redeploys from that file, so `https://my-api.puter.work` keeps serving â now running your updated code. Anything already calling the worker keeps working without changes.
+
+[NEXT
+
+`delete()`](/./Workers/delete/)[PREVIOUS
+
+TypeScript Types](/./Workers/types/)

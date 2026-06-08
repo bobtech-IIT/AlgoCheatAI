@@ -230,44 +230,43 @@ async function callAPI<T>(endpoint: string, payload: any): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+/**
+ * Executes a call by attempting the Vercel backend proxy first (if config indicates a key is set).
+ * If the backend call fails for any reason (e.g. rate limit, expired/invalid key, network issue),
+ * it automatically catches the error and falls back to client-side Puter AI execution.
+ */
+async function callWithFallback<T>(action: string, payload: any, endpoint: string): Promise<T> {
+  const config = await checkBackendConfig();
+  if (config.hasOpenAIKey) {
+    try {
+      return await callAPI<T>(endpoint, payload);
+    } catch (err) {
+      console.warn(`Backend call to ${endpoint} failed, falling back to client-side Puter AI:`, err);
+      return callClientSidePuterAI(action, payload);
+    }
+  } else {
+    return callClientSidePuterAI(action, payload);
+  }
+}
+
 export async function auditContent(args: {
   type: ContentType;
   content: string;
   imageDescription?: string;
 }): Promise<AuditResult> {
-  const config = await checkBackendConfig();
-  if (config.hasOpenAIKey) {
-    return callAPI<AuditResult>("/api/audit", args);
-  } else {
-    return callClientSidePuterAI("audit", args);
-  }
+  return callWithFallback<AuditResult>("audit", args, "/api/audit");
 }
 
 export async function generateContent(args: { type: ContentType; topic: string }): Promise<GenerateResult> {
-  const config = await checkBackendConfig();
-  if (config.hasOpenAIKey) {
-    return callAPI<GenerateResult>("/api/generate", args);
-  } else {
-    return callClientSidePuterAI("generate", args);
-  }
+  return callWithFallback<GenerateResult>("generate", args, "/api/generate");
 }
 
 export async function scanTopicTier(topic: string): Promise<TierScanResult> {
-  const config = await checkBackendConfig();
-  if (config.hasOpenAIKey) {
-    return callAPI<TierScanResult>("/api/scan", { topic });
-  } else {
-    return callClientSidePuterAI("scan", { topic });
-  }
+  return callWithFallback<TierScanResult>("scan", { topic }, "/api/scan");
 }
 
 export async function generateForAlgoCheat(args: { type: ContentType; topic: string }): Promise<GenerateResult> {
-  const config = await checkBackendConfig();
-  if (config.hasOpenAIKey) {
-    return callAPI<GenerateResult>("/api/generate-algocheat", args);
-  } else {
-    return callClientSidePuterAI("generate-algocheat", args);
-  }
+  return callWithFallback<GenerateResult>("generate-algocheat", args, "/api/generate-algocheat");
 }
 
 export async function getContextQuestions(args: {
@@ -275,12 +274,7 @@ export async function getContextQuestions(args: {
   topic: string;
   detectedName: string;
 }): Promise<{ questions: string[] }> {
-  const config = await checkBackendConfig();
-  if (config.hasOpenAIKey) {
-    return callAPI<{ questions: string[] }>("/api/questions", args);
-  } else {
-    return callClientSidePuterAI("questions", args);
-  }
+  return callWithFallback<{ questions: string[] }>("questions", args, "/api/questions");
 }
 
 export async function generateWithUserContext(args: {
@@ -290,12 +284,7 @@ export async function generateWithUserContext(args: {
   questions: string[];
   answers: string[];
 }): Promise<GenerateResult> {
-  const config = await checkBackendConfig();
-  if (config.hasOpenAIKey) {
-    return callAPI<GenerateResult>("/api/generate-user-context", args);
-  } else {
-    return callClientSidePuterAI("generate-user-context", args);
-  }
+  return callWithFallback<GenerateResult>("generate-user-context", args, "/api/generate-user-context");
 }
 
 export async function validateUserAnswers(args: {
@@ -304,10 +293,5 @@ export async function validateUserAnswers(args: {
   questions: string[];
   answers: string[];
 }): Promise<{ valid: boolean; reason?: string }> {
-  const config = await checkBackendConfig();
-  if (config.hasOpenAIKey) {
-    return callAPI<{ valid: boolean; reason?: string }>("/api/validate", args);
-  } else {
-    return callClientSidePuterAI("validate", args);
-  }
+  return callWithFallback<{ valid: boolean; reason?: string }>("validate", args, "/api/validate");
 }
