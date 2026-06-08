@@ -32,14 +32,22 @@ function initPuter(authToken) {
 }
 
 export function getPuterInstance(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    const err = new Error("Missing or invalid authorization token");
-    err.status = 401;
-    throw err;
-  }
-  const token = authHeader.substring(7);
-  return initPuter(token);
+  return {
+    req,
+    _puter: null,
+    get puter() {
+      if (this._puter) return this._puter;
+      const authHeader = this.req.headers?.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        const err = new Error("Missing or invalid authorization token");
+        err.status = 401;
+        throw err;
+      }
+      const token = authHeader.substring(7);
+      this._puter = initPuter(token);
+      return this._puter;
+    }
+  };
 }
 
 export function extractText(resp) {
@@ -67,18 +75,54 @@ export function parseJSON(raw) {
   return JSON.parse(slice);
 }
 
-export async function callPuterAI(puter, prompt) {
+export async function callPuterAI(puterWrapper, prompt) {
+  const openAIKey = process.env.OPENAI_API_KEY;
+  if (openAIKey) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openAIKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.choices[0].message.content;
+        return parseJSON(text);
+      }
+      console.warn(`Direct OpenAI API call failed with status ${response.status}. Falling back to Puter.`);
+    } catch (err) {
+      console.warn("Direct OpenAI API call failed, falling back to Puter:", err);
+    }
+  }
+
+  // Fallback to Puter.js
+  const puter = puterWrapper?.puter;
+  if (!puter) {
+    throw new Error("Puter auth token is missing and no direct OpenAI API key is configured.");
+  }
+
   let lastErr;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const resp = await puter.ai.chat(prompt, { model: "gpt-5-nano" });
+      // Attempt using gpt-4o-mini first (cheaper/standard), fall back to gpt-5-nano
+      const modelName = attempt === 0 ? "gpt-4o-mini" : "gpt-5-nano";
+      const resp = await puter.ai.chat(prompt, { model: modelName });
       const text = extractText(resp);
       return parseJSON(text);
     } catch (e) {
       lastErr = e;
     }
   }
-  throw lastErr instanceof Error ? lastErr : new Error(JSON.stringify(lastErr) || "AI request failed");
+  throw lastErr instanceof Error ? lastErr : new Error("AI request failed");
 }
 
 export const RUBRICS = {
