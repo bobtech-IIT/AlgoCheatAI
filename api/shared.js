@@ -76,9 +76,42 @@ export async function callPuterAI(puterWrapper, prompt) {
     }
   }
 
-  // If we reach here, direct OpenAI is unavailable or has failed.
-  // Instead of calling Puter's REST API (which throws 403 forbidden for guest user sessions from backend),
-  // we throw a 503 error to trigger client-side Puter AI fallback.
+  // If direct OpenAI is unavailable or has failed, fallback to Puter's REST API using the PUTER_AUTH_TOKEN
+  const puterAuthToken = process.env.PUTER_AUTH_TOKEN;
+  if (puterAuthToken && puterAuthToken.trim().length > 0) {
+    try {
+      const response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${puterAuthToken.trim()}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      if (response.status === 402) {
+        const err = new Error("insufficient_funds");
+        err.status = 402;
+        throw err;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.choices[0].message.content;
+        return parseJSON(text);
+      }
+      const errText = await response.text();
+      console.warn(`Backend Puter REST API call failed with status ${response.status}: ${errText}`);
+    } catch (err) {
+      if (err.status === 402) throw err;
+      console.warn("Backend Puter REST API call failed:", err);
+    }
+  }
+
+  // If both fail/are unavailable, throw a 503 error to trigger client-side Puter AI fallback.
   const err = new Error("backend_openai_unavailable");
   err.status = 503;
   throw err;
