@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Zap, Github } from "lucide-react";
+import { Zap, Github, Settings } from "lucide-react";
 
 const links = [
   { href: "#features", label: "Features" },
@@ -57,6 +57,15 @@ export function Navbar() {
 
           {/* CTA buttons — shrink-0 prevents squishing */}
           <div className="flex items-center gap-2 shrink-0 ml-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => window.dispatchEvent(new CustomEvent("open-api-settings"))}
+              className="w-8 h-8 sm:w-9 sm:h-9 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg border border-border/40 shrink-0"
+              title="API Settings"
+            >
+              <Settings className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+            </Button>
             <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex gap-1.5 border-border hover:bg-muted h-8 sm:h-9">
               <a href="https://github.com/bobtech-IIT/AlgoCheatAI" target="_blank" rel="noopener noreferrer">
                 <Github className="w-3.5 h-3.5" />

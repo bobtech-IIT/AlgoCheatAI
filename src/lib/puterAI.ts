@@ -42,12 +42,22 @@ export interface TierScanResult {
  * Robustly retrieves the Puter guest session token or logged-in token.
  * Does not trigger interactive popups in background tasks.
  */
+/**
+ * Robustly retrieves the Puter guest session token or logged-in token.
+ * Does not trigger interactive popups in background tasks.
+ */
 async function getAuthToken(): Promise<string> {
   if (typeof window === "undefined") {
     throw new Error("Client-only execution context");
   }
 
-  // 1. Wait briefly for Puter.js CDN script to load and initialize (up to 1.5 seconds)
+  // 1. Check if user configured a custom Puter auth token
+  const customPuterToken = localStorage.getItem("algocheat.puter_token");
+  if (customPuterToken && customPuterToken.trim().length > 0) {
+    return customPuterToken.trim();
+  }
+
+  // 2. Wait briefly for Puter.js CDN script to load and initialize (up to 1.5 seconds)
   let puter = (window as any).puter;
   for (let attempt = 0; attempt < 15 && !puter; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -58,7 +68,7 @@ async function getAuthToken(): Promise<string> {
     throw new Error("Puter.js failed to load. Please check your internet connection.");
   }
 
-  // 2. Check if we already have a token
+  // 3. Check if we already have a token
   if (puter.authToken) {
     return puter.authToken;
   }
@@ -73,7 +83,7 @@ async function getAuthToken(): Promise<string> {
 /**
  * Triggers Puter authentication. Call only from click handlers to bypass popup blockers.
  */
-export async function triggerPuterSignIn(): Promise<string> {
+export async function triggerPuterSignIn(options?: { attemptTempUser?: boolean }): Promise<string> {
   if (typeof window === "undefined") return "no-token-available";
   
   let puter = (window as any).puter;
@@ -88,50 +98,77 @@ export async function triggerPuterSignIn(): Promise<string> {
     throw new Error("Puter.js failed to load. Please check your network.");
   }
 
-  // Promise that resolves when a token is detected in localStorage (via storage event or polling fallback)
-  const tokenDetectedPromise = new Promise<string>((resolve) => {
-    const checkToken = () => {
-      const tok = puter?.authToken || localStorage.getItem("puter.auth.token.v2");
-      if (tok && tok !== "no-token-available") {
-        resolve(tok);
-        return true;
+  // Check if we already have a custom Puter token
+  const customToken = localStorage.getItem("algocheat.puter_token");
+  if (customToken && customToken.trim().length > 0) {
+    if (puter) puter.authToken = customToken.trim();
+    return customToken.trim();
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    let settled = false;
+    let interval: any = null;
+
+    const onSuccess = (token: string) => {
+      if (settled) return;
+      settled = true;
+      if (interval) clearInterval(interval);
+      window.removeEventListener("storage", storageHandler);
+      if (puter && token && token !== "no-token-available") {
+        puter.authToken = token;
       }
-      return false;
+      resolve(token);
+    };
+
+    const onFailure = (err: any) => {
+      console.warn("Puter sign-in attempt warning/error:", err);
     };
 
     // 1. Storage event listener (fires when other tabs/popups write to localStorage on same origin)
     const storageHandler = (e: StorageEvent) => {
       if (e.key === "puter.auth.token.v2" && e.newValue && e.newValue !== "no-token-available") {
-        window.removeEventListener("storage", storageHandler);
-        resolve(e.newValue);
+        onSuccess(e.newValue);
       }
     };
     window.addEventListener("storage", storageHandler);
 
-    // 2. Fast polling fallback (every 500ms for 3 minutes)
+    // 2. Fast polling fallback (every 500ms for 2 minutes)
     let count = 0;
-    const interval = setInterval(() => {
-      if (checkToken() || ++count > 360) {
-        clearInterval(interval);
-        window.removeEventListener("storage", storageHandler);
+    interval = setInterval(() => {
+      const tok = puter?.authToken || localStorage.getItem("puter.auth.token.v2");
+      if (tok && tok !== "no-token-available") {
+        onSuccess(tok);
+      } else if (++count > 240) { // 2 minutes timeout
+        if (!settled) {
+          settled = true;
+          clearInterval(interval);
+          window.removeEventListener("storage", storageHandler);
+          reject(new Error("Authentication timed out. Please try again."));
+        }
       }
     }, 500);
+
+    // 3. Trigger Puter standard sign-in (use option flag if we want guest activation)
+    puter.auth.signIn(options?.attemptTempUser ? { attempt_temp_user_creation: true } : {})
+      .then((res: any) => {
+        const tok = res?.token || puter.authToken || localStorage.getItem("puter.auth.token.v2");
+        if (tok && tok !== "no-token-available") {
+          onSuccess(tok);
+        }
+      })
+      .catch((err: any) => {
+        onFailure(err);
+        // If the popup was blocked, reject immediately so the user is prompted to enable popups
+        if (err?.error === "popup_blocked") {
+          if (!settled) {
+            settled = true;
+            clearInterval(interval);
+            window.removeEventListener("storage", storageHandler);
+            reject(new Error("The sign-in popup was blocked by your browser. Please allow popups for this site."));
+          }
+        }
+      });
   });
-
-  // Race Puter's standard signIn against our token detection promise
-  const signInPromise = puter.auth.signIn({ attempt_temp_user_creation: true })
-    .then(() => {
-      return puter.authToken || localStorage.getItem("puter.auth.token.v2") || "no-token-available";
-    });
-
-  const finalToken = await Promise.race([signInPromise, tokenDetectedPromise]);
-
-  // Ensure it's active in the current Puter instance state
-  if (puter && finalToken && finalToken !== "no-token-available") {
-    puter.authToken = finalToken;
-  }
-
-  return finalToken;
 }
 
 /**
@@ -235,9 +272,45 @@ async function callClientSidePuterAI(action: string, payload: any): Promise<any>
     throw new Error(`Unknown client-side Puter AI action: ${action}`);
   }
 
+  // 1. Check if user configured a custom OpenAI API Key
+  const customOpenAIKey = typeof window !== "undefined" ? localStorage.getItem("algocheat.openai_key") : null;
+  if (customOpenAIKey && customOpenAIKey.trim().startsWith("sk-")) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${customOpenAIKey.trim()}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.choices[0].message.content;
+        return parseJSON(text);
+      }
+      const errText = await response.text();
+      throw new Error(`OpenAI Key error ${response.status}: ${errText}`);
+    } catch (err) {
+      console.warn("Failed calling custom OpenAI API Key, falling back to Puter:", err);
+    }
+  }
+
+  // 2. Check if user configured a custom Puter Token
+  const customPuterToken = typeof window !== "undefined" ? localStorage.getItem("algocheat.puter_token") : null;
   const puter = (window as any).puter;
   if (!puter) {
     throw new Error("Puter.js is not loaded. Please check your connection.");
+  }
+
+  if (customPuterToken && customPuterToken.trim().length > 0) {
+    puter.authToken = customPuterToken.trim();
   }
 
   const resp = await puter.ai.chat(prompt, { model: "gpt-4o-mini" });
@@ -280,6 +353,14 @@ async function callAPI<T>(endpoint: string, payload: any): Promise<T> {
  * it automatically catches the error and falls back to client-side Puter AI execution.
  */
 async function callWithFallback<T>(action: string, payload: any, endpoint: string): Promise<T> {
+  // Check if we have local custom credentials. If so, bypass the backend proxy and call client-side directly
+  const customOpenAIKey = typeof window !== "undefined" ? localStorage.getItem("algocheat.openai_key") : null;
+  const customPuterToken = typeof window !== "undefined" ? localStorage.getItem("algocheat.puter_token") : null;
+  
+  if ((customOpenAIKey && customOpenAIKey.trim().startsWith("sk-")) || (customPuterToken && customPuterToken.trim().length > 0)) {
+    return callClientSidePuterAI(action, payload);
+  }
+
   const config = await checkBackendConfig();
   if (config.hasOpenAIKey) {
     try {

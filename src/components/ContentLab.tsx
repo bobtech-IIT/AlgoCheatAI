@@ -115,6 +115,19 @@ function VoiceFingerprintCard({ fingerprint }: { fingerprint: string[] | string 
   );
 }
 
+function isAuthError(e: any): boolean {
+  if (!e) return false;
+  const msg = e.message || "";
+  const status = e.status || 0;
+  return (
+    status === 401 ||
+    status === 403 ||
+    msg.toLowerCase().includes("unauthorized") ||
+    msg.toLowerCase().includes("forbidden") ||
+    msg.toLowerCase().includes("auth")
+  );
+}
+
 function RefinementBox({ baseText }: { baseText: string }) {
   const [instruction, setInstruction] = useState("");
   const [loading, setLoading] = useState(false);
@@ -151,6 +164,10 @@ CRITICAL INSTRUCTIONS:
       if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
         if ((window as any).showPuterAuthDialog) {
           (window as any).showPuterAuthDialog("exhausted", refine);
+        }
+      } else if (isAuthError(e)) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("welcome", refine);
         }
       } else {
         toast({
@@ -338,6 +355,11 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
     if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
       if ((window as any).showPuterAuthDialog) {
         (window as any).showPuterAuthDialog("exhausted", retryFn);
+      }
+      setState("idle");
+    } else if (isAuthError(e)) {
+      if ((window as any).showPuterAuthDialog) {
+        (window as any).showPuterAuthDialog("welcome", retryFn);
       }
       setState("idle");
     } else {
@@ -664,6 +686,10 @@ function AuditPanel({ type }: { type: ContentType }) {
         if ((window as any).showPuterAuthDialog) {
           (window as any).showPuterAuthDialog("exhausted", run);
         }
+      } else if (isAuthError(e)) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("welcome", run);
+        }
       } else {
         toast({
           variant: "destructive",
@@ -867,7 +893,7 @@ export function ContentLab() {
   const handlePuterLogin = async () => {
     setAuthLoading(true);
     try {
-      await triggerPuterSignIn();
+      await triggerPuterSignIn({ attemptTempUser: dialogMode === "welcome" });
       toast({
         description: dialogMode === "welcome"
           ? "Free guest credits activated successfully!"
@@ -971,9 +997,22 @@ export function ContentLab() {
                   </>
                 )}
               </Button>
+              
+              <Button
+                variant="link"
+                className="text-[11px] text-primary hover:underline h-auto p-0 mt-0.5"
+                onClick={() => {
+                  setDialogMode(null);
+                  window.dispatchEvent(new CustomEvent("open-api-settings"));
+                }}
+                disabled={authLoading}
+              >
+                Or enter custom API Key (popup-free fallback)
+              </Button>
+
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full mt-1"
                 onClick={() => setDialogMode(null)}
                 disabled={authLoading}
               >

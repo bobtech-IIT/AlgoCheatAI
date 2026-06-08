@@ -8,6 +8,7 @@ import { ROICalculator } from "@/components/landing/ROICalculator";
 import { ProductShowcase } from "@/components/landing/ProductShowcase";
 import { DashboardSneakPeek } from "@/components/landing/DashboardSneakPeek";
 import { ContentLab } from "@/components/ContentLab";
+import { APISettingsModal } from "@/components/APISettingsModal";
 import { StatsBand } from "@/components/landing/StatsBand";
 import { ComparisonTable } from "@/components/landing/ComparisonTable";
 import { Testimonials } from "@/components/landing/Testimonials";
@@ -48,6 +49,7 @@ const Index = () => {
         <FinalCTA />
       </main>
       <Footer />
+      <APISettingsModal />
     </div>
   );
 };
