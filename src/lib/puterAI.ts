@@ -88,8 +88,50 @@ export async function triggerPuterSignIn(): Promise<string> {
     throw new Error("Puter.js failed to load. Please check your network.");
   }
 
-  await puter.auth.signIn({ attempt_temp_user_creation: true });
-  return puter.authToken || localStorage.getItem("puter.auth.token.v2") || "no-token-available";
+  // Promise that resolves when a token is detected in localStorage (via storage event or polling fallback)
+  const tokenDetectedPromise = new Promise<string>((resolve) => {
+    const checkToken = () => {
+      const tok = puter?.authToken || localStorage.getItem("puter.auth.token.v2");
+      if (tok && tok !== "no-token-available") {
+        resolve(tok);
+        return true;
+      }
+      return false;
+    };
+
+    // 1. Storage event listener (fires when other tabs/popups write to localStorage on same origin)
+    const storageHandler = (e: StorageEvent) => {
+      if (e.key === "puter.auth.token.v2" && e.newValue && e.newValue !== "no-token-available") {
+        window.removeEventListener("storage", storageHandler);
+        resolve(e.newValue);
+      }
+    };
+    window.addEventListener("storage", storageHandler);
+
+    // 2. Fast polling fallback (every 500ms for 3 minutes)
+    let count = 0;
+    const interval = setInterval(() => {
+      if (checkToken() || ++count > 360) {
+        clearInterval(interval);
+        window.removeEventListener("storage", storageHandler);
+      }
+    }, 500);
+  });
+
+  // Race Puter's standard signIn against our token detection promise
+  const signInPromise = puter.auth.signIn({ attempt_temp_user_creation: true })
+    .then(() => {
+      return puter.authToken || localStorage.getItem("puter.auth.token.v2") || "no-token-available";
+    });
+
+  const finalToken = await Promise.race([signInPromise, tokenDetectedPromise]);
+
+  // Ensure it's active in the current Puter instance state
+  if (puter && finalToken && finalToken !== "no-token-available") {
+    puter.authToken = finalToken;
+  }
+
+  return finalToken;
 }
 
 /**
