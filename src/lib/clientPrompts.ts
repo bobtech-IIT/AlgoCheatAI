@@ -128,6 +128,8 @@ Return ONLY valid JSON:
 {
   "tier": "general" | "algocheat" | "unknown" | "invalid",
   "detectedName": "<the unknown product/brand name, only if tier=unknown, else null>",
+  "suggestedCorrection": "<suggested spelling/semantic correction for any typo or ambiguous term, e.g. 'Lokas' instead of 'Lukas' in the context of Bhagavad Gita. Set to null if there is no typo or ambiguity>",
+  "correctedTopic": "<the full corrected topic string with the typo/ambiguity resolved, or null if none>",
   "reasoning": "<one sentence explanation of your decision>"
 }`;
 }
