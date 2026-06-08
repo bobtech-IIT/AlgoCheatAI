@@ -565,7 +565,6 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
           <div className="bg-background p-4 rounded-md whitespace-pre-wrap text-sm font-mono leading-relaxed border">
             {sanitize(result.content)}
           </div>
-          <p className="text-xs text-muted-foreground italic">{result.notes}</p>
           <div className="flex gap-3 items-center flex-wrap pt-2 border-t">
             <Button variant="outline" size="sm" onClick={reset}>← Write another</Button>
             {onUseGeneratedContent && (
