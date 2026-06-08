@@ -3,7 +3,7 @@
  * Strategies: Cache-First for assets, Network-First for HTML, offline fallback
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `algocheat-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `algocheat-dynamic-${CACHE_VERSION}`;
 
