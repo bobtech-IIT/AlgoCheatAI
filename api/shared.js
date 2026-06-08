@@ -1,51 +1,20 @@
-import { readFileSync } from "node:fs";
-import vm from "node:vm";
-import path from "node:path";
-
 // Catch background Puter.js websocket/API rejections to prevent node process warnings
 process.on('unhandledRejection', (reason) => {
   console.warn('Background Puter Unhandled Rejection:', reason);
 });
 
-function initPuter(authToken) {
-  const goodContext = {
-    PUTER_API_ORIGIN: globalThis.PUTER_API_ORIGIN,
-    PUTER_ORIGIN: globalThis.PUTER_ORIGIN,
-  };
-  Object.getOwnPropertyNames(globalThis).forEach(name => {
-    try {
-      goodContext[name] = globalThis[name];
-    } catch {
-      // silent fail
-    }
-  });
-  goodContext.globalThis = goodContext;
-
-  const puterFilePath = path.join(process.cwd(), "node_modules", "@heyputer/puter.js", "dist", "puter.cjs");
-  const code = readFileSync(puterFilePath, "utf8");
-  const context = vm.createContext(goodContext);
-  vm.runInNewContext(code, context);
-  if (authToken) {
-    goodContext.puter.setAuthToken(authToken);
-  }
-  return goodContext.puter;
-}
-
 export function getPuterInstance(req) {
   return {
     req,
-    _puter: null,
-    get puter() {
-      if (this._puter) return this._puter;
+    _token: null,
+    get token() {
+      if (this._token) return this._token;
       const authHeader = this.req.headers?.authorization;
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        const err = new Error("Missing or invalid authorization token");
-        err.status = 401;
-        throw err;
+        return null;
       }
-      const token = authHeader.substring(7);
-      this._puter = initPuter(token);
-      return this._puter;
+      this._token = authHeader.substring(7);
+      return this._token;
     }
   };
 }
@@ -98,32 +67,54 @@ export async function callPuterAI(puterWrapper, prompt) {
         const text = data.choices[0].message.content;
         return parseJSON(text);
       }
-      console.warn(`Direct OpenAI API call failed with status ${response.status}. Falling back to Puter.`);
+      console.warn(`Direct OpenAI API call failed with status ${response.status}. Falling back to Puter REST API.`);
     } catch (err) {
-      console.warn("Direct OpenAI API call failed, falling back to Puter:", err);
+      console.warn("Direct OpenAI API call failed, falling back to Puter REST API:", err);
     }
   }
 
-  // Fallback to Puter.js
-  const puter = puterWrapper?.puter;
-  if (!puter) {
-    throw new Error("Puter auth token is missing and no direct OpenAI API key is configured.");
+  // Fallback to Puter.js REST API (OpenAI-compatible)
+  const token = puterWrapper?.token;
+  if (!token || token === "no-token-available") {
+    const err = new Error("Puter session is inactive or expired. Please sign in to AlgoCheat AI to get free AI credits.");
+    err.status = 401;
+    throw err;
   }
 
-  let lastErr;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      // Attempt using gpt-4o-mini first (cheaper/standard), fall back to gpt-5-nano
-      const modelName = attempt === 0 ? "gpt-4o-mini" : "gpt-5-nano";
-      const resp = await puter.ai.chat(prompt, { model: modelName });
-      const text = extractText(resp);
-      return parseJSON(text);
-    } catch (e) {
-      lastErr = e;
-    }
+  const response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (response.status === 402) {
+    const err = new Error("insufficient_funds");
+    err.status = 402;
+    throw err;
   }
-  throw lastErr instanceof Error ? lastErr : new Error("AI request failed");
+
+  if (response.status === 401) {
+    const err = new Error("unauthorized");
+    err.status = 401;
+    throw err;
+  }
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Puter AI REST call failed (${response.status}): ${errText}`);
+  }
+
+  const data = await response.json();
+  const text = data.choices[0].message.content;
+  return parseJSON(text);
 }
+
 
 export const RUBRICS = {
   text: {

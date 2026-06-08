@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap, MessageSquarePlus } from "lucide-react";
-import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, AuditResult, GenerateResult } from "@/lib/puterAI";
+import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap, MessageSquarePlus, ShieldCheck, X } from "lucide-react";
+import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, triggerPuterSignIn, hasPuterToken, AuditResult, GenerateResult } from "@/lib/puterAI";
 import { ContentType, RUBRICS } from "@/lib/auditRubrics";
 import { useToast } from "@/hooks/use-toast";
 import { useRAG } from "@/hooks/useRAG";
+
 
 function sanitize(text: string): string {
   let cleaned = text
@@ -123,6 +125,19 @@ function RefinementBox({ baseText }: { baseText: string }) {
     if (!instruction.trim()) return;
     setLoading(true);
     try {
+      if (!hasPuterToken()) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("welcome", refine);
+        } else {
+          toast({
+            variant: "destructive",
+            description: "Puter session not initialized. Please click Run Audit first.",
+          });
+        }
+        setLoading(false);
+        return;
+      }
+
       const prompt = `You are an expert LinkedIn editor.
 Here is the original LinkedIn post:
 [START OF ORIGINAL POST]
@@ -141,18 +156,26 @@ CRITICAL INSTRUCTIONS:
 6. Do NOT wrap your output in triple quotes ("""), double quotes, single quotes, or backticks.
 7. Do NOT output any markdown fences (like \`\`\`), labels, notes, or commentary.
 8. Return ONLY the plain text of the final revised post, starting directly with the first line of the post.`;
+
       const resp = await (window as any).puter.ai.chat(prompt, { model: "gpt-4o-mini" });
       const text = typeof resp === "string" ? resp : resp?.message?.content ?? resp?.text ?? JSON.stringify(resp);
       setRefined(sanitize(text));
     } catch (e: any) {
-      toast({
-        variant: "destructive",
-        description: e?.message ?? "Refinement failed",
-      });
+      if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("exhausted", refine);
+        }
+      } else {
+        toast({
+          variant: "destructive",
+          description: e?.message ?? "Refinement failed",
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="mt-4 border border-primary/20 rounded-xl p-4 bg-gradient-to-br from-primary/5 to-secondary/5 space-y-3">
@@ -286,6 +309,19 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
     setState("loading");
     setStatusMsg("Analysing your topic...");
     try {
+      if (!hasPuterToken()) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("welcome", run);
+        } else {
+          toast({
+            variant: "destructive",
+            description: "Puter session not initialized. Please click Run Audit first.",
+          });
+        }
+        setState("idle");
+        return;
+      }
+
       // Semantic RAG Search Context
       let augTopic = topic;
       if (isReady) {
@@ -333,11 +369,18 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
         setState("questions");
       }
     } catch (e: any) {
-      toast({
-        variant: "destructive",
-        description: e?.message ?? "Generation failed",
-      });
-      setState("idle");
+      if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("exhausted", run);
+        }
+        setState("idle");
+      } else {
+        toast({
+          variant: "destructive",
+          description: e?.message ?? "Generation failed",
+        });
+        setState("idle");
+      }
     }
   };
 
@@ -352,6 +395,19 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
     setState("loading");
     setStatusMsg("Validating your responses...");
     try {
+      if (!hasPuterToken()) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("welcome", runWithAnswers);
+        } else {
+          toast({
+            variant: "destructive",
+            description: "Puter session not initialized. Please click Run Audit first.",
+          });
+        }
+        setState("questions");
+        return;
+      }
+
       // 1. Coherence & intent check
       const validation = await validateUserAnswers({
         topic,
@@ -378,13 +434,21 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
       setResult(r);
       setState("result");
     } catch (e: any) {
-      toast({
-        variant: "destructive",
-        description: e?.message ?? "Generation failed",
-      });
-      setState("questions");
+      if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("exhausted", runWithAnswers);
+        }
+        setState("questions");
+      } else {
+        toast({
+          variant: "destructive",
+          description: e?.message ?? "Generation failed",
+        });
+        setState("questions");
+      }
     }
   };
+
 
   return (
     <Card className="p-6 bg-gradient-to-br from-primary/5 to-secondary/5 space-y-4">
@@ -562,17 +626,37 @@ function AuditPanel({ type }: { type: ContentType }) {
     if (!content.trim()) return;
     setLoading(true);
     try {
+      if (!hasPuterToken()) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("welcome", run);
+        } else {
+          toast({
+            variant: "destructive",
+            description: "Puter session not initialized. Please try again.",
+          });
+        }
+        setLoading(false);
+        return;
+      }
+
       const r = await auditContent({ type, content, imageDescription: imageDesc });
       setResult(r);
     } catch (e: any) {
-      toast({
-        variant: "destructive",
-        description: e?.message ?? "Audit failed",
-      });
+      if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("exhausted", run);
+        }
+      } else {
+        toast({
+          variant: "destructive",
+          description: e?.message ?? "Audit failed",
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -747,8 +831,46 @@ function KnowledgeBasePanel() {
 }
 
 export function ContentLab() {
+  const [dialogMode, setDialogMode] = useState<"welcome" | "exhausted" | null>(null);
+  const [onSuccessCallback, setOnSuccessCallback] = useState<{ run: () => void } | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    (window as any).showPuterAuthDialog = (mode: "welcome" | "exhausted", callback: () => void) => {
+      setDialogMode(mode);
+      setOnSuccessCallback({ run: callback });
+    };
+    return () => {
+      delete (window as any).showPuterAuthDialog;
+    };
+  }, []);
+
+  const handlePuterLogin = async () => {
+    setAuthLoading(true);
+    try {
+      await triggerPuterSignIn();
+      toast({
+        description: dialogMode === "welcome"
+          ? "Free guest credits activated successfully!"
+          : "Signed in successfully! Your Puter credits are refreshed.",
+      });
+      setDialogMode(null);
+      if (onSuccessCallback) {
+        onSuccessCallback.run();
+      }
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        description: err.message || "Failed to authenticate. Please try again.",
+      });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   return (
-    <section id="content-lab" className="mb-16 scroll-mt-20">
+    <section id="content-lab" className="mb-16 scroll-mt-20 relative">
       <div className="text-center mb-8">
         <Badge variant="secondary" className="mb-3">AlgoCheat Proprietary Engine · 100% Private Data Audits</Badge>
         <h2 className="text-3xl md:text-4xl font-bold mb-3">AlgoCheat AI Content Lab</h2>
@@ -785,6 +907,69 @@ export function ContentLab() {
         <TabsContent value="article"><AuditPanel type="article" /></TabsContent>
         <TabsContent value="kb"><KnowledgeBasePanel /></TabsContent>
       </Tabs>
+
+      {/* Puter Auth Modal Overlay (100% Popup-Proof) */}
+      {dialogMode && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <Card className="relative w-full max-w-md border border-primary/20 bg-card/95 shadow-2xl p-6 space-y-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-4 h-8 w-8 hover:bg-muted"
+              onClick={() => setDialogMode(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+
+            <div className="text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto text-primary text-xl">
+                {dialogMode === "welcome" ? "⚡" : "🔑"}
+              </div>
+              <h3 className="text-xl font-bold tracking-tight">
+                {dialogMode === "welcome" ? "Activate Free AI Credits" : "Credits limit reached"}
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {dialogMode === "welcome"
+                  ? "AlgoCheat AI is powered by Puter's privacy-first keyless AI engine. To run organic audits and generate posts, initialize your free guest credits session below."
+                  : "Your temporary guest credits are exhausted. Puter provides unlimited free credits if you log in or register a free Puter account. Click below to refresh them instantly."}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2.5 pt-2">
+              <Button
+                onClick={handlePuterLogin}
+                disabled={authLoading}
+                className="w-full bg-gradient-to-r from-primary to-purple-600 text-white font-medium hover:opacity-95 shadow-lg shadow-primary/20"
+              >
+                {authLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Connecting to Puter...
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4 mr-2" />
+                    {dialogMode === "welcome" ? "Activate Free Guest AI" : "Sign In / Sign Up (Free)"}
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setDialogMode(null)}
+                disabled={authLoading}
+              >
+                Cancel
+              </Button>
+            </div>
+
+            <p className="text-[10px] text-center text-muted-foreground/60 leading-normal">
+              By continuing, you activate Puter's client-side privacy sandbox. No email, credit card, or setup required.
+            </p>
+          </Card>
+        </div>
+      )}
     </section>
   );
 }
+

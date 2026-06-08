@@ -29,7 +29,7 @@ export interface TierScanResult {
 
 /**
  * Robustly retrieves the Puter guest session token or logged-in token.
- * Triggers interactive guest sign-in if no token exists.
+ * Does not trigger interactive popups in background tasks.
  */
 async function getAuthToken(): Promise<string> {
   if (typeof window === "undefined") {
@@ -56,25 +56,40 @@ async function getAuthToken(): Promise<string> {
     return stored;
   }
 
-  // 3. Since no session exists, trigger Puter sign-in with temporary guest creation.
-  try {
-    await puter.auth.signIn({ attempt_temp_user_creation: true });
-    
-    // Check for the token again after successful sign-in popup completion
-    if (puter.authToken) {
-      return puter.authToken;
-    }
-    const newStored = localStorage.getItem("puter.auth.token.v2");
-    if (newStored) {
-      return newStored;
-    }
-  } catch (err: any) {
-    console.warn("Puter guest login popup failed or was cancelled:", err);
-  }
-
-  // Fallback placeholder so hybrid backend can still process via OpenAI if configured
   return "no-token-available";
 }
+
+/**
+ * Triggers Puter authentication. Call only from click handlers to bypass popup blockers.
+ */
+export async function triggerPuterSignIn(): Promise<string> {
+  if (typeof window === "undefined") return "no-token-available";
+  
+  let puter = (window as any).puter;
+  if (!puter) {
+    for (let attempt = 0; attempt < 10 && !puter; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      puter = (window as any).puter;
+    }
+  }
+
+  if (!puter) {
+    throw new Error("Puter.js failed to load. Please check your network.");
+  }
+
+  await puter.auth.signIn({ attempt_temp_user_creation: true });
+  return puter.authToken || localStorage.getItem("puter.auth.token.v2") || "no-token-available";
+}
+
+/**
+ * Checks if a Puter session/token is locally available.
+ */
+export function hasPuterToken(): boolean {
+  if (typeof window === "undefined") return false;
+  const puter = (window as any).puter;
+  return !!(puter?.authToken || localStorage.getItem("puter.auth.token.v2"));
+}
+
 
 /**
  * Client-side helper to fetch embeddings from the backend Vercel proxy.
