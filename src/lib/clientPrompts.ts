@@ -106,7 +106,8 @@ TIER 1 - GENERAL: The topic is about a widely known subject you can write about
 accurately using training knowledge. Examples: AI trends, leadership, LinkedIn growth,
 MBA careers, SaaS, productivity, personal branding, startup advice, corporate skills,
 future of work, problem solving, business strategy, general technology concepts (e.g. RAG,
-vector databases, embeddings, APIs, databases, software development, cloud hosting, PWA).
+vector databases, embeddings, APIs, databases, software development, cloud hosting, PWA),
+general religion/philosophy/scriptures (e.g. Bhagavad Gita, Stoicism, Vedas, Bible), history, or literature.
 
 TIER 2 - ALGOCHEAT: The topic explicitly mentions AlgoCheat AI, "my LinkedIn tool",
 "this audit tool", or clearly refers to the AlgoCheat AI product described above.
@@ -117,8 +118,11 @@ a widely known public entity or general technology concept. You have zero accura
 Examples: "Sumoo AI", "my startup XYZ", "my coaching brand", "our new SaaS product",
 "the app I am launching". Do NOT classify general terms like "RAG", "Vector Database", "API", or "database" here.
 
-TIER 4 - INVALID: The topic request is gibberish, keyboard mashing, spam, random single words that don't make sense, or nonsense designed to bypass or trick the system.
-Examples: "asldsadaldlj", "asdfasdf", "qwerty", "test", "hello", "asdf", "g", "foo".
+TIER 4 - INVALID: The topic request is absolute gibberish, random keyboard mashing, or uninterpretable spam.
+Examples: "asldsadaldlj", "asdfasdf", "qwerty", "asdf", "g", "foo".
+
+CRITICAL CLASSIFICATION RULE:
+- Do NOT classify a request as INVALID just because it contains typos, asks an unusual or illogical question, or mixes unrelated concepts (e.g., asking what ancient scriptures say about a modern/western name or term). If the request forms a coherent sentence, question, or contains readable words, classify it as TIER 1 - GENERAL or TIER 3 - UNKNOWN, never INVALID. Only use INVALID for true keyboard mashing or single nonsense words.
 
 Return ONLY valid JSON:
 {
