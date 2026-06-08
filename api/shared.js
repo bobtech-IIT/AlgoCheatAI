@@ -45,6 +45,58 @@ export function parseJSON(raw) {
 }
 
 export async function callPuterAI(puterWrapper, prompt) {
+  // 1. Primary Engine: Cerebras API (or custom configuration passed via request headers)
+  const req = puterWrapper?.req;
+  const customKey = req?.headers?.["x-custom-api-key"];
+  const customUrl = req?.headers?.["x-custom-api-url"];
+  const customModel = req?.headers?.["x-custom-api-model"];
+
+  let activeKey = "csk-jw9rm35ffev3v8ec8jm588594y26xr4kxck4mr642k56fpjj";
+  let activeUrl = "https://api.cerebras.ai/v1/chat/completions";
+  let activeModel = "gpt-oss-120b";
+
+  if (customKey?.trim()) {
+    activeKey = customKey.trim();
+    if (customUrl?.trim()) {
+      activeUrl = customUrl.trim();
+    } else if (activeKey.startsWith("sk-")) {
+      activeUrl = "https://api.openai.com/v1/chat/completions";
+    }
+    
+    if (customModel?.trim()) {
+      activeModel = customModel.trim();
+    } else if (activeKey.startsWith("sk-")) {
+      activeModel = "gpt-4o-mini";
+    }
+  }
+
+  try {
+    const response = await fetch(activeUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${activeKey}`,
+      },
+      body: JSON.stringify({
+        model: activeModel,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const text = data.choices[0].message.content;
+      return parseJSON(text);
+    }
+    const errText = await response.text();
+    console.warn(`Direct API call to ${activeUrl} failed with status ${response.status}: ${errText}`);
+  } catch (err) {
+    console.warn(`Direct API call to ${activeUrl} failed:`, err);
+  }
+
+  // 2. Fallback Engine: OpenAI API Key (if configured on Vercel)
   const openAIKey = process.env.OPENAI_API_KEY;
   const hasValidOpenAIKey = openAIKey && openAIKey.trim().startsWith("sk-");
 

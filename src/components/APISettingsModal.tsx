@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 export function APISettingsModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [openaiKey, setOpenaiKey] = useState("");
+  const [apiUrl, setApiUrl] = useState("");
+  const [apiModel, setApiModel] = useState("");
   const [puterToken, setPuterToken] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [showToken, setShowToken] = useState(false);
@@ -19,7 +21,19 @@ export function APISettingsModal() {
     // Load stored values on mount
     const savedKey = localStorage.getItem("algocheat.openai_key") || "";
     const savedToken = localStorage.getItem("algocheat.puter_token") || "";
-    setOpenaiKey(savedKey);
+    const savedUrl = localStorage.getItem("algocheat.api_url") || "";
+    const savedModel = localStorage.getItem("algocheat.api_model") || "";
+
+    if (savedKey) {
+      setOpenaiKey(savedKey);
+      setApiUrl(savedUrl);
+      setApiModel(savedModel);
+    } else {
+      // Pre-fill with user's requested Cerebras details by default if not set
+      setOpenaiKey("csk-jw9rm35ffev3v8ec8jm588594y26xr4kxck4mr642k56fpjj");
+      setApiUrl("https://api.cerebras.ai/v1/chat/completions");
+      setApiModel("gpt-oss-120b");
+    }
     setPuterToken(savedToken);
 
     // Listen for custom event to open settings
@@ -36,6 +50,18 @@ export function APISettingsModal() {
         localStorage.setItem("algocheat.openai_key", openaiKey.trim());
       } else {
         localStorage.removeItem("algocheat.openai_key");
+      }
+
+      if (apiUrl.trim()) {
+        localStorage.setItem("algocheat.api_url", apiUrl.trim());
+      } else {
+        localStorage.removeItem("algocheat.api_url");
+      }
+
+      if (apiModel.trim()) {
+        localStorage.setItem("algocheat.api_model", apiModel.trim());
+      } else {
+        localStorage.removeItem("algocheat.api_model");
       }
 
       if (puterToken.trim()) {
@@ -63,8 +89,12 @@ export function APISettingsModal() {
 
   const clearSettings = () => {
     localStorage.removeItem("algocheat.openai_key");
+    localStorage.removeItem("algocheat.api_url");
+    localStorage.removeItem("algocheat.api_model");
     localStorage.removeItem("algocheat.puter_token");
     setOpenaiKey("");
+    setApiUrl("");
+    setApiModel("");
     setPuterToken("");
     toast({
       description: "Custom credentials cleared. Reverted to default keyless engine.",
@@ -89,26 +119,26 @@ export function APISettingsModal() {
     setTesting(true);
     try {
       if (openaiKey.trim()) {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        // Test via the backend /api/scan proxy to bypass client-side CORS issues
+        const response = await fetch("/api/scan", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${openaiKey.trim()}`,
+            "Authorization": "Bearer test-token",
+            "x-custom-api-key": openaiKey.trim(),
+            "x-custom-api-url": apiUrl.trim() || "https://api.openai.com/v1/chat/completions",
+            "x-custom-api-model": apiModel.trim() || "gpt-4o-mini",
           },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: "ping" }],
-            max_tokens: 5,
-          }),
+          body: JSON.stringify({ topic: "ping" }),
         });
         
         if (response.ok) {
           toast({
-            description: "OpenAI connection test successful! Key is valid.",
+            description: "Connection test successful! The API configuration is valid.",
           });
         } else {
           const errText = await response.text();
-          throw new Error(`OpenAI error ${response.status}: ${errText}`);
+          throw new Error(`API error ${response.status}: ${errText}`);
         }
       } else if (puterToken.trim()) {
         const response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
@@ -151,25 +181,25 @@ export function APISettingsModal() {
             Engine API Settings
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
-            If Puter keyless AI is blocked or failing due to browser third-party storage restrictions (Incognito, iOS Safari, privacy extensions), configure your custom credentials below.
+            Configure Cerebras Inference API or custom OpenAI-compatible credentials below to bypass mobile popup restrictions and browser third-party storage blocks.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-3">
-          {/* OpenAI Key Input */}
+          {/* Custom API Key Input */}
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <Label htmlFor="settings-openai-key" className="text-xs font-semibold flex items-center gap-1.5">
                 <Key className="w-3.5 h-3.5 text-primary" />
-                OpenAI API Key (Recommended)
+                API Key (OpenAI / Cerebras / Custom)
               </Label>
               <a 
-                href="https://platform.openai.com/api-keys" 
+                href="https://inference-docs.cerebras.ai/introduction" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
               >
-                <HelpCircle className="w-3 h-3" /> Get OpenAI Key
+                <HelpCircle className="w-3 h-3" /> Inference Docs
               </a>
             </div>
             <div className="relative">
@@ -178,7 +208,7 @@ export function APISettingsModal() {
                 type={showKey ? "text" : "password"}
                 value={openaiKey}
                 onChange={(e) => setOpenaiKey(e.target.value)}
-                placeholder="sk-..."
+                placeholder="csk-... or sk-..."
                 className="pr-10 text-xs font-mono"
               />
               <button
@@ -189,9 +219,38 @@ export function APISettingsModal() {
                 {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-[10px] text-muted-foreground/80 leading-normal">
-              Direct connection to OpenAI. Zero popups, maximum reliability.
-            </p>
+          </div>
+
+          {/* Custom API URL Input */}
+          <div className="space-y-1.5">
+            <Label htmlFor="settings-api-url" className="text-xs font-semibold flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-primary" />
+              API Endpoint URL (OpenAI-compatible)
+            </Label>
+            <Input
+              id="settings-api-url"
+              type="text"
+              value={apiUrl}
+              onChange={(e) => setApiUrl(e.target.value)}
+              placeholder="https://api.cerebras.ai/v1/chat/completions"
+              className="text-xs font-mono"
+            />
+          </div>
+
+          {/* Custom API Model Input */}
+          <div className="space-y-1.5">
+            <Label htmlFor="settings-api-model" className="text-xs font-semibold flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-primary" />
+              Model Name
+            </Label>
+            <Input
+              id="settings-api-model"
+              type="text"
+              value={apiModel}
+              onChange={(e) => setApiModel(e.target.value)}
+              placeholder="gpt-oss-120b"
+              className="text-xs font-mono"
+            />
           </div>
 
           <div className="relative flex py-2 items-center">
@@ -242,7 +301,7 @@ export function APISettingsModal() {
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-[10px] text-muted-foreground flex items-start gap-2 leading-relaxed">
             <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5 animate-pulse" />
             <span>
-              <strong>Privacy Guarantee:</strong> Stored strictly in your browser local storage. Credentials directly interface with OpenAI/Puter APIs from your client browser and are never sent to or stored on our servers.
+              <strong>Privacy Guarantee:</strong> Stored strictly in your browser local storage. Non-Puter credentials are securely proxied via HTTPS through our backend serverless functions to bypass browser CORS policies and never stored.
             </span>
           </div>
         </div>
@@ -273,7 +332,7 @@ export function APISettingsModal() {
             </Button>
           </div>
           
-          {(localStorage.getItem("algocheat.openai_key") || localStorage.getItem("algocheat.puter_token")) && (
+          {(localStorage.getItem("algocheat.openai_key") || localStorage.getItem("algocheat.api_url") || localStorage.getItem("algocheat.puter_token")) && (
             <Button
               onClick={clearSettings}
               variant="ghost"

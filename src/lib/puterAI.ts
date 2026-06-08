@@ -323,12 +323,28 @@ async function callClientSidePuterAI(action: string, payload: any): Promise<any>
  */
 async function callAPI<T>(endpoint: string, payload: any): Promise<T> {
   const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`,
+  };
+
+  const customKey = localStorage.getItem("algocheat.openai_key");
+  const customUrl = localStorage.getItem("algocheat.api_url");
+  const customModel = localStorage.getItem("algocheat.api_model");
+
+  if (customKey && customKey.trim()) {
+    headers["x-custom-api-key"] = customKey.trim();
+  }
+  if (customUrl && customUrl.trim()) {
+    headers["x-custom-api-url"] = customUrl.trim();
+  }
+  if (customModel && customModel.trim()) {
+    headers["x-custom-api-model"] = customModel.trim();
+  }
+
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 
@@ -353,11 +369,18 @@ async function callAPI<T>(endpoint: string, payload: any): Promise<T> {
  * it automatically catches the error and falls back to client-side Puter AI execution.
  */
 async function callWithFallback<T>(action: string, payload: any, endpoint: string): Promise<T> {
-  // Check if we have local custom credentials. If so, bypass the backend proxy and call client-side directly
+  // Check if we have local custom credentials.
   const customOpenAIKey = typeof window !== "undefined" ? localStorage.getItem("algocheat.openai_key") : null;
   const customPuterToken = typeof window !== "undefined" ? localStorage.getItem("algocheat.puter_token") : null;
-  
-  if ((customOpenAIKey && customOpenAIKey.trim().startsWith("sk-")) || (customPuterToken && customPuterToken.trim().length > 0)) {
+  const customApiUrl = typeof window !== "undefined" ? localStorage.getItem("algocheat.api_url") : null;
+
+  // Only run client-side direct calls if:
+  // 1. We are using a Puter Developer Token, OR
+  // 2. We are using a custom OpenAI key starting with "sk-" AND no custom API URL override is specified.
+  const canRunClientSide = (customPuterToken && customPuterToken.trim().length > 0) ||
+    (customOpenAIKey && customOpenAIKey.trim().startsWith("sk-") && (!customApiUrl || !customApiUrl.trim()));
+
+  if (canRunClientSide) {
     return callClientSidePuterAI(action, payload);
   }
 
