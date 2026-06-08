@@ -977,6 +977,14 @@ export function ContentLab() {
                   ? "AlgoCheat AI is powered by Puter's privacy-first keyless AI engine. To run organic audits and generate posts, initialize your free guest credits session below."
                   : "Your temporary guest credits are exhausted. Puter provides unlimited free credits if you log in or register a free Puter account. Click below to refresh them instantly."}
               </p>
+              {/mobile|ipad|iphone|android/i.test(navigator.userAgent) && (
+                <div className="text-[11px] text-yellow-400 bg-yellow-500/10 border border-yellow-500/25 p-3 rounded-lg leading-relaxed text-left flex gap-2">
+                  <span className="text-sm shrink-0">⚠️</span>
+                  <span>
+                    <strong>Mobile Browser Policy:</strong> Mobile browsers block cross-origin popup sign-ins. If the login popup gets stuck, close it and click the link below to enter your custom API key.
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-2.5 pt-2">
