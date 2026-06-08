@@ -33,6 +33,8 @@ export interface GenerateResult {
 export interface TierScanResult {
   tier: "general" | "algocheat" | "unknown" | "invalid";
   detectedName?: string;
+  suggestedCorrection?: string;
+  correctedTopic?: string;
   reasoning?: string;
 }
 

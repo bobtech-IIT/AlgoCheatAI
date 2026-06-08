@@ -259,7 +259,7 @@ function AuditReport({ result }: { result: AuditResult }) {
   );
 }
 
-type GenState = "idle" | "loading" | "questions" | "answering" | "blocked" | "result";
+type GenState = "idle" | "loading" | "questions" | "answering" | "blocked" | "result" | "clarification";
 
 interface TopicGeneratorProps {
   type: ContentType;
@@ -276,6 +276,8 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [statusMsg, setStatusMsg] = useState("");
   const [blockReason, setBlockReason] = useState("");
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [correctedTopic, setCorrectedTopic] = useState<string | null>(null);
   const { toast } = useToast();
   const { searchContext, isReady } = useRAG();
 
@@ -288,32 +290,93 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
     setStatusMsg("");
     setBlockReason("");
     setAugmentedTopic("");
+    setSuggestion(null);
+    setCorrectedTopic(null);
   };
 
-  // Phase A: classify topic tier
-  const run = async () => {
-    if (!topic.trim()) return;
+  const getAugTopic = async (t: string) => {
+    let aug = t;
+    if (isReady) {
+      try {
+        const matches = await searchContext(t, 2, 0.15);
+        if (matches.length > 0) {
+          const contextText = matches
+            .map(m => `[Reference from ${m.docName}]: ${m.text}`)
+            .join("\n\n");
+          aug = `${t}\n\nKNOWLEDGE BASE CONTEXT (incorporate relevant details/facts below into the post):\n${contextText}`;
+        }
+      } catch (err) {
+        console.warn("RAG retrieval failed, proceeding with original topic:", err);
+      }
+    }
+    return aug;
+  };
+
+  const executeGeneration = async (tier: string, augTopic: string, name?: string) => {
+    if (tier === "general") {
+      setStatusMsg("Writing your post...");
+      const r = await generateContent({ type, topic: augTopic });
+      setResult(r);
+      setState("result");
+    } else if (tier === "algocheat") {
+      setStatusMsg("Writing with product facts...");
+      const r = await generateForAlgoCheat({ type, topic: augTopic });
+      setResult(r);
+      setState("result");
+    } else {
+      const detName = name || "your product";
+      setDetectedName(detName);
+      setStatusMsg("Fetching questions...");
+      const qResult = await getContextQuestions({ type, topic: augTopic, detectedName: detName });
+      setQuestions(qResult.questions);
+      setAnswers(new Array(qResult.questions.length).fill(""));
+      setState("questions");
+    }
+  };
+
+  const handleError = (e: any, retryFn: () => void) => {
+    if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
+      if ((window as any).showPuterAuthDialog) {
+        (window as any).showPuterAuthDialog("exhausted", retryFn);
+      }
+      setState("idle");
+    } else {
+      toast({
+        variant: "destructive",
+        description: e?.message ?? "Operation failed",
+      });
+      setState("idle");
+    }
+  };
+
+  const acceptSuggestion = () => {
+    if (correctedTopic) {
+      setTopic(correctedTopic);
+      run(correctedTopic);
+    }
+  };
+
+  const declineSuggestion = async () => {
     setState("loading");
     setStatusMsg("Analysing your topic...");
     try {
-      // Semantic RAG Search Context
-      let augTopic = topic;
-      if (isReady) {
-        try {
-          const matches = await searchContext(topic, 2, 0.15);
-          if (matches.length > 0) {
-            const contextText = matches
-              .map(m => `[Reference from ${m.docName}]: ${m.text}`)
-              .join("\n\n");
-            augTopic = `${topic}\n\nKNOWLEDGE BASE CONTEXT (incorporate relevant details/facts below into the post):\n${contextText}`;
-          }
-        } catch (err) {
-          console.warn("RAG retrieval failed, proceeding with original topic:", err);
-        }
-      }
-      setAugmentedTopic(augTopic);
-
       const tierResult = await scanTopicTier(topic);
+      const aug = await getAugTopic(topic);
+      setAugmentedTopic(aug);
+      await executeGeneration(tierResult.tier, aug, tierResult.detectedName);
+    } catch (e: any) {
+      handleError(e, declineSuggestion);
+    }
+  };
+
+  // Phase A: classify topic tier and check suggestions
+  const run = async (forceTopic?: string) => {
+    const targetTopic = forceTopic || topic;
+    if (!targetTopic.trim()) return;
+    setState("loading");
+    setStatusMsg("Analysing your topic...");
+    try {
+      const tierResult = await scanTopicTier(targetTopic);
       const tier = tierResult.tier;
 
       if (tier === "invalid") {
@@ -322,39 +385,19 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
         return;
       }
 
-      if (tier === "general") {
-        setStatusMsg("Writing your post...");
-        const r = await generateContent({ type, topic: augTopic });
-        setResult(r);
-        setState("result");
-      } else if (tier === "algocheat") {
-        setStatusMsg("Writing with product facts...");
-        const r = await generateForAlgoCheat({ type, topic: augTopic });
-        setResult(r);
-        setState("result");
-      } else {
-        // unknown product — fetch smart questions
-        const name = tierResult.detectedName || "your product";
-        setDetectedName(name);
-        setStatusMsg("Fetching questions...");
-        const qResult = await getContextQuestions({ type, topic: augTopic, detectedName: name });
-        setQuestions(qResult.questions);
-        setAnswers(new Array(qResult.questions.length).fill(""));
-        setState("questions");
+      // Check for suggestions/corrections
+      if (tierResult.suggestedCorrection && !forceTopic) {
+        setSuggestion(tierResult.suggestedCorrection);
+        setCorrectedTopic(tierResult.correctedTopic || null);
+        setState("clarification");
+        return;
       }
+
+      const aug = await getAugTopic(targetTopic);
+      setAugmentedTopic(aug);
+      await executeGeneration(tier, aug, tierResult.detectedName);
     } catch (e: any) {
-      if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
-        if ((window as any).showPuterAuthDialog) {
-          (window as any).showPuterAuthDialog("exhausted", run);
-        }
-        setState("idle");
-      } else {
-        toast({
-          variant: "destructive",
-          description: e?.message ?? "Generation failed",
-        });
-        setState("idle");
-      }
+      handleError(e, () => run(forceTopic));
     }
   };
 
@@ -395,21 +438,9 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
       setResult(r);
       setState("result");
     } catch (e: any) {
-      if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
-        if ((window as any).showPuterAuthDialog) {
-          (window as any).showPuterAuthDialog("exhausted", runWithAnswers);
-        }
-        setState("questions");
-      } else {
-        toast({
-          variant: "destructive",
-          description: e?.message ?? "Generation failed",
-        });
-        setState("questions");
-      }
+      handleError(e, runWithAnswers);
     }
   };
-
 
   return (
     <Card className="p-6 bg-gradient-to-br from-primary/5 to-secondary/5 space-y-4">
@@ -433,7 +464,7 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
               onKeyDown={(e) => e.key === "Enter" && state === "idle" && run()}
               disabled={state === "loading"}
             />
-            <Button onClick={run} disabled={state === "loading" || !topic.trim()}>
+            <Button onClick={() => run()} disabled={state === "loading" || !topic.trim()}>
               {state === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               Generate
             </Button>
@@ -442,6 +473,46 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
             <p className="text-xs text-primary animate-pulse">{statusMsg}</p>
           )}
         </>
+      )}
+
+      {/* STATE: clarification */}
+      {state === "clarification" && suggestion && (
+        <div className="space-y-4 p-5 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="flex items-start gap-3">
+            <span className="text-xl mt-0.5">🔍</span>
+            <div className="space-y-1">
+              <h4 className="font-semibold text-sm">Did you mean to ask about:</h4>
+              <p className="text-base font-bold text-primary italic">"{suggestion}"</p>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                I detected a potential typographical error or ambiguous term in your request. Would you like to use the clarified topic?
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button
+              onClick={acceptSuggestion}
+              className="bg-gradient-to-r from-primary to-primary-glow text-primary-foreground hover:opacity-90 shadow-mint text-xs animate-pulse"
+            >
+              Yes, Use Corrected Topic
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={declineSuggestion}
+              className="text-xs border-border/80 hover:bg-muted"
+            >
+              No, Keep Original
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={reset}
+              className="text-xs text-muted-foreground"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* STATE: questions — unknown product detected */}
