@@ -51,9 +51,13 @@ export async function callPuterAI(puterWrapper, prompt) {
   const customUrl = req?.headers?.["x-custom-api-url"];
   const customModel = req?.headers?.["x-custom-api-model"];
 
-  let activeKey = "csk-jw9rm35ffev3v8ec8jm588594y26xr4kxck4mr642k56fpjj";
+  let activeKey = process.env.CEREBRAS_API_KEY;
   let activeUrl = "https://api.cerebras.ai/v1/chat/completions";
   let activeModel = "gpt-oss-120b";
+
+  if (!activeKey && !customKey?.trim()) {
+    console.warn("CEREBRAS_API_KEY environment variable is not defined on the backend!");
+  }
 
   if (customKey?.trim()) {
     activeKey = customKey.trim();
