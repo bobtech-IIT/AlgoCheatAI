@@ -1,4 +1,13 @@
 import { ContentType } from "./auditRubrics";
+import {
+  buildTierScanPrompt,
+  buildGeneratePrompt,
+  buildGenerateWithAlgoCheatPrompt,
+  buildContextQuestionsPrompt,
+  buildGenerateWithUserContextPrompt,
+  buildValidateAnswersPrompt,
+  buildAuditPrompt
+} from "./clientPrompts";
 
 export interface AuditScore {
   key: string;
@@ -90,7 +99,6 @@ export function hasPuterToken(): boolean {
   return !!(puter?.authToken || localStorage.getItem("puter.auth.token.v2"));
 }
 
-
 /**
  * Client-side helper to fetch embeddings from the backend Vercel proxy.
  */
@@ -115,7 +123,86 @@ export async function fetchEmbeddings(texts: string[]): Promise<number[][]> {
 }
 
 /**
- * Shared HTTP POST client helper for hitting Vercel serverless functions
+ * Caches and retrieves the backend configuration (hasOpenAIKey).
+ */
+let configPromise: Promise<{ hasOpenAIKey: boolean }> | null = null;
+
+async function checkBackendConfig(): Promise<{ hasOpenAIKey: boolean }> {
+  if (typeof window === "undefined") return { hasOpenAIKey: false };
+  if (!configPromise) {
+    configPromise = fetch("/api/config")
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .catch(() => ({ hasOpenAIKey: false }));
+  }
+  return configPromise;
+}
+
+// Client-side JSON parser helper
+function parseJSON(raw: string): any {
+  const cleaned = raw
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  const slice = start >= 0 && end >= 0 ? cleaned.slice(start, end + 1) : cleaned;
+  return JSON.parse(slice);
+}
+
+// Client-side text extractor helper
+function extractText(resp: any): string {
+  if (typeof resp === "string") return resp;
+  if (resp?.message?.content) {
+    const c = resp.message.content;
+    if (typeof c === "string") return c;
+    if (Array.isArray(c)) return c.map((x: any) => x.text ?? "").join("");
+  }
+  if (resp?.text) return resp.text;
+  if (resp?.toString) return resp.toString();
+  return JSON.stringify(resp);
+}
+
+/**
+ * Local evaluation runner using window.puter.ai.chat in user session.
+ */
+async function callClientSidePuterAI(action: string, payload: any): Promise<any> {
+  let prompt = "";
+  
+  if (action === "audit") {
+    prompt = buildAuditPrompt(payload.type, payload.content, payload.imageDescription);
+  } else if (action === "generate") {
+    prompt = buildGeneratePrompt(payload.type, payload.topic);
+  } else if (action === "scan") {
+    prompt = buildTierScanPrompt(payload.topic);
+  } else if (action === "generate-algocheat") {
+    prompt = buildGenerateWithAlgoCheatPrompt(payload.type, payload.topic);
+  } else if (action === "questions") {
+    prompt = buildContextQuestionsPrompt(payload.type, payload.topic, payload.detectedName);
+  } else if (action === "generate-user-context") {
+    prompt = buildGenerateWithUserContextPrompt(payload.type, payload.topic, payload.detectedName, payload.questions, payload.answers);
+  } else if (action === "validate") {
+    prompt = buildValidateAnswersPrompt(payload.topic, payload.detectedName, payload.questions, payload.answers);
+  } else {
+    throw new Error(`Unknown client-side Puter AI action: ${action}`);
+  }
+
+  const puter = (window as any).puter;
+  if (!puter) {
+    throw new Error("Puter.js is not loaded. Please check your connection.");
+  }
+
+  const resp = await puter.ai.chat(prompt, { model: "gpt-4o-mini" });
+  const text = extractText(resp);
+  return parseJSON(text);
+}
+
+/**
+ * Shared HTTP POST client helper for hitting Vercel serverless functions (when OpenAI key is present)
  */
 async function callAPI<T>(endpoint: string, payload: any): Promise<T> {
   const token = await getAuthToken();
@@ -143,49 +230,84 @@ async function callAPI<T>(endpoint: string, payload: any): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function auditContent(args: {
+export async function auditContent(args: {
   type: ContentType;
   content: string;
   imageDescription?: string;
-}) {
-  return callAPI<AuditResult>("/api/audit", args);
+}): Promise<AuditResult> {
+  const config = await checkBackendConfig();
+  if (config.hasOpenAIKey) {
+    return callAPI<AuditResult>("/api/audit", args);
+  } else {
+    return callClientSidePuterAI("audit", args);
+  }
 }
 
-export function generateContent(args: { type: ContentType; topic: string }) {
-  return callAPI<GenerateResult>("/api/generate", args);
+export async function generateContent(args: { type: ContentType; topic: string }): Promise<GenerateResult> {
+  const config = await checkBackendConfig();
+  if (config.hasOpenAIKey) {
+    return callAPI<GenerateResult>("/api/generate", args);
+  } else {
+    return callClientSidePuterAI("generate", args);
+  }
 }
 
-export function scanTopicTier(topic: string): Promise<TierScanResult> {
-  return callAPI<TierScanResult>("/api/scan", { topic });
+export async function scanTopicTier(topic: string): Promise<TierScanResult> {
+  const config = await checkBackendConfig();
+  if (config.hasOpenAIKey) {
+    return callAPI<TierScanResult>("/api/scan", { topic });
+  } else {
+    return callClientSidePuterAI("scan", { topic });
+  }
 }
 
-export function generateForAlgoCheat(args: { type: ContentType; topic: string }) {
-  return callAPI<GenerateResult>("/api/generate-algocheat", args);
+export async function generateForAlgoCheat(args: { type: ContentType; topic: string }): Promise<GenerateResult> {
+  const config = await checkBackendConfig();
+  if (config.hasOpenAIKey) {
+    return callAPI<GenerateResult>("/api/generate-algocheat", args);
+  } else {
+    return callClientSidePuterAI("generate-algocheat", args);
+  }
 }
 
-export function getContextQuestions(args: {
+export async function getContextQuestions(args: {
   type: ContentType;
   topic: string;
   detectedName: string;
-}) {
-  return callAPI<{ questions: string[] }>("/api/questions", args);
+}): Promise<{ questions: string[] }> {
+  const config = await checkBackendConfig();
+  if (config.hasOpenAIKey) {
+    return callAPI<{ questions: string[] }>("/api/questions", args);
+  } else {
+    return callClientSidePuterAI("questions", args);
+  }
 }
 
-export function generateWithUserContext(args: {
+export async function generateWithUserContext(args: {
   type: ContentType;
   topic: string;
   detectedName: string;
   questions: string[];
   answers: string[];
-}) {
-  return callAPI<GenerateResult>("/api/generate-user-context", args);
+}): Promise<GenerateResult> {
+  const config = await checkBackendConfig();
+  if (config.hasOpenAIKey) {
+    return callAPI<GenerateResult>("/api/generate-user-context", args);
+  } else {
+    return callClientSidePuterAI("generate-user-context", args);
+  }
 }
 
-export function validateUserAnswers(args: {
+export async function validateUserAnswers(args: {
   topic: string;
   detectedName: string;
   questions: string[];
   answers: string[];
-}) {
-  return callAPI<{ valid: boolean; reason?: string }>("/api/validate", args);
+}): Promise<{ valid: boolean; reason?: string }> {
+  const config = await checkBackendConfig();
+  if (config.hasOpenAIKey) {
+    return callAPI<{ valid: boolean; reason?: string }>("/api/validate", args);
+  } else {
+    return callClientSidePuterAI("validate", args);
+  }
 }
