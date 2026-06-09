@@ -188,6 +188,13 @@ async function callClientSidePuterAI(action: string, payload: any): Promise<any>
     prompt = buildGenerateWithUserContextPrompt(payload.type, payload.topic, payload.detectedName, payload.questions, payload.answers);
   } else if (action === "validate") {
     prompt = buildValidateAnswersPrompt(payload.topic, payload.detectedName, payload.questions, payload.answers);
+  } else if (action === "refine") {
+    prompt = `${payload.prompt}
+
+CRITICAL: Return ONLY valid JSON in this exact shape. No markdown fences, no labels, no commentary.
+{
+  "refined": "<the full revised post text>"
+}`;
   } else {
     throw new Error(`Unknown client-side Puter AI action: ${action}`);
   }
@@ -435,4 +442,10 @@ export async function validateUserAnswers(args: {
   answers: string[];
 }): Promise<{ valid: boolean; reason?: string }> {
   return callWithFallback<{ valid: boolean; reason?: string }>("validate", args, "/api/validate");
+}
+
+export async function refineContent(args: {
+  prompt: string;
+}): Promise<{ refined: string }> {
+  return callWithFallback<{ refined: string }>("refine", args, "/api/refine");
 }

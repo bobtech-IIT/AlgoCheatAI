@@ -279,6 +279,15 @@ ALGOCHEAT AI — PRODUCT TRUTH FILE (use these facts verbatim, never invent):
   It uses AI calibrated on LinkedIn algorithm research up to 2025.
 `;
 
+export function buildRefinePrompt(prompt) {
+  return `${prompt}
+
+CRITICAL: Return ONLY valid JSON in this exact shape. Do NOT include markdown fences, labels, or commentary.
+{
+  "refined": "<the full revised post text>"
+}`;
+}
+
 export function buildTierScanPrompt(topic) {
   return `You are a topic classification engine for a LinkedIn content tool.
 

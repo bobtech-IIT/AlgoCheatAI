@@ -7,19 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap, MessageSquarePlus } from "lucide-react";
-import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, triggerPuterSignIn, hasPuterToken, AuditResult, GenerateResult } from "@/lib/puterAI";
-
-async function getTokenForRefinement(): Promise<string | null> {
-  const customPuterToken = localStorage.getItem("algocheat.puter_token");
-  if (customPuterToken && customPuterToken.trim()) return customPuterToken.trim();
-  let puter = (window as any).puter;
-  for (let attempt = 0; attempt < 15 && !puter; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    puter = (window as any).puter;
-  }
-  if (puter?.authToken) return puter.authToken;
-  return localStorage.getItem("puter.auth.token.v2");
-}
+import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, triggerPuterSignIn, hasPuterToken, refineContent, AuditResult, GenerateResult } from "@/lib/puterAI";
 import { ContentType, RUBRICS } from "@/lib/auditRubrics";
 import { useToast } from "@/hooks/use-toast";
 import { useRAG } from "@/hooks/useRAG";
@@ -136,57 +124,25 @@ CRITICAL INSTRUCTIONS:
 2. Incorporate the instruction naturally, preserving the author's overall voice but making the requested changes (e.g. adding a hook, adding a negative hook, shortening, adding emojis, adding Hindi phrases, etc.).
 3. You MUST NEVER stack a new opening line, introduction, or hook on top of an existing one (avoid double-hooking). If the refinement introduces a new starting sentence, question, or hook (either due to user request or tone adjustment), you MUST completely replace the original opening lines of the post rather than stacking them.
 4. You MUST preserve all hashtags (or ensure exactly 3-5 niche hashtags are present at the very bottom) from the original post, unless the user explicitly asks to remove them. Do NOT drop or delete hashtags.
-5. You MUST NOT include phantom links, placeholder links, or commands to "click the link", "tap the link", or "check the link" unless a link is explicitly present in the original post or requested by the user.
-6. Do NOT wrap your output in triple quotes ("""), double quotes, single quotes, or backticks.
-7. Do NOT output any markdown fences (like \`\`\`), labels, notes, or commentary.
-8. Return ONLY the plain text of the final revised post, starting directly with the first line of the post.`;
+5. You MUST NOT include phantom links, placeholder links, or commands to "click the link", "tap the link", or "check the link" unless a link is explicitly present in the original post or requested by the user.`;
 
-      const customKey = localStorage.getItem("algocheat.openai_key");
-      let text = "";
-
-      if (customKey && customKey.trim().startsWith("sk-")) {
-        const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${customKey.trim()}` },
-          body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
-        });
-        if (!resp.ok) throw new Error(`API Error ${resp.status}`);
-        const data = await resp.json();
-        text = data.choices?.[0]?.message?.content || "";
-      } else {
-        const token = await getTokenForRefinement();
-        let resp: Response | null = null;
-
-        if (token) {
-          resp = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-            body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
-          });
-        }
-
-        if (!resp || !resp.ok) {
-          resp = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
-          });
-        }
-
-        if (!resp.ok) {
-          throw new Error("AI service busy. Configure your own API key in Settings (gear icon) to continue.");
-        }
-
-        const data = await resp.json();
-        text = data.choices?.[0]?.message?.content || "";
-      }
-
-      setRefined(sanitize(text));
+      const result = await refineContent({ prompt });
+      setRefined(sanitize(result.refined));
     } catch (e: any) {
       if (e?.message?.includes("insufficient_funds") || e?.status === 402) {
-        toast({ variant: "destructive", description: "Free AI credits exhausted. Configure your own API key in the gear icon settings." });
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("exhausted", refine);
+        } else {
+          toast({ variant: "destructive", description: "Free AI credits exhausted. Configure your own API key in the gear icon settings." });
+        }
+      } else if (isAuthError(e)) {
+        if ((window as any).showPuterAuthDialog) {
+          (window as any).showPuterAuthDialog("welcome", refine);
+        } else {
+          toast({ variant: "destructive", description: "Authentication error. Configure your API key in settings (gear icon)." });
+        }
       } else {
-        toast({ variant: "destructive", description: e?.message ?? "Refinement failed" });
+        toast({ variant: "destructive", description: e?.message ?? "Refinement failed. Configure your own API key in Settings (gear icon)." });
       }
     } finally {
       setLoading(false);
