@@ -1,24 +1,19 @@
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
-import { LogoCloud } from "@/components/landing/LogoCloud";
 import { ProblemSolution } from "@/components/landing/ProblemSolution";
 import { HowToUse } from "@/components/landing/HowToUse";
 import { FeatureBento } from "@/components/landing/FeatureBento";
-import { ROICalculator } from "@/components/landing/ROICalculator";
 import { ProductShowcase } from "@/components/landing/ProductShowcase";
-import { DashboardSneakPeek } from "@/components/landing/DashboardSneakPeek";
 import { ContentLab } from "@/components/ContentLab";
 import { APISettingsModal } from "@/components/APISettingsModal";
 import { StatsBand } from "@/components/landing/StatsBand";
-import { ComparisonTable } from "@/components/landing/ComparisonTable";
 import { Testimonials } from "@/components/landing/Testimonials";
-import { Pricing } from "@/components/landing/Pricing";
-import { FounderStory } from "@/components/landing/FounderStory";
 import { FAQ } from "@/components/landing/FAQ";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { Footer } from "@/components/landing/Footer";
 import { PlaybookSection } from "@/components/landing/PlaybookSection";
 import { CaseStudiesSection } from "@/components/landing/CaseStudiesSection";
+import { UserIntentSection } from "@/components/UserIntentSection";
 
 const Index = () => {
   return (
@@ -26,13 +21,8 @@ const Index = () => {
       <Navbar />
       <main>
         <Hero />
-        <HowToUse />
-        <LogoCloud />
         <ProblemSolution />
-        <FeatureBento />
-        <ROICalculator />
-        <ProductShowcase />
-        <DashboardSneakPeek />
+        <HowToUse />
 
         <section className="py-20 md:py-24 bg-card/20 border-y border-border/40">
           <div className="container">
@@ -43,11 +33,18 @@ const Index = () => {
         <CaseStudiesSection />
 
         <StatsBand />
-        <ComparisonTable />
-        <Testimonials />
-        <Pricing />
-        <FounderStory />
+
+        <section id="user-intent-section" className="py-20 md:py-24">
+          <div className="container">
+            <UserIntentSection />
+          </div>
+        </section>
+
         <PlaybookSection />
+
+        <FeatureBento />
+        <ProductShowcase />
+        <Testimonials />
         <FAQ />
         <FinalCTA />
       </main>

@@ -1,8 +1,8 @@
 const stats = [
   { value: "312%", label: "avg. engagement lift", sub: "vs 2024 algorithm baseline" },
   { value: "4.7×", label: "organic reach multiplier", sub: "with format-matched posts" },
-  { value: "47%", label: "CAC reduction", sub: "across 1,000+ tracked accounts" },
-  { value: "89%", label: "higher lead quality", sub: "than cold outreach replies" },
+  { value: "83%", label: "higher save rate", sub: "on algorithm-optimized posts" },
+  { value: "2.4×", label: "faster follower growth", sub: "for consistent auditors" },
 ];
 
 export function StatsBand() {

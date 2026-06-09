@@ -4,6 +4,25 @@ import './index.css'
 
 createRoot(document.getElementById("root")!).render(<App />);
 
+// ─── Global API Auth Dialog Handler ──────────────────────────────────────────
+// Called when Puter/API credits are exhausted — opens API settings modal
+(window as any).showPuterAuthDialog = (type: string, retryFn?: () => void) => {
+  window.dispatchEvent(new CustomEvent("open-api-settings"));
+  if (type === "exhausted") {
+    const msg = document.createElement("div");
+    msg.id = "api-exhausted-toast";
+    msg.style.cssText = "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1e0a3c,#2d1b69);border:1px solid rgba(109,40,217,0.5);border-radius:16px;padding:14px 20px;z-index:9999;max-width:380px;width:calc(100vw-40px);animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1);font-family:Inter,sans-serif";
+    msg.innerHTML = `
+      <div style="font-size:13px;font-weight:700;color:#e9d5ff">Free API Credits Exhausted</div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:4px">Configure your own API key in settings to continue auditing.</div>
+      <button onclick="this.parentElement.remove();window.dispatchEvent(new Event('open-api-settings'))" style="margin-top:10px;background:linear-gradient(135deg,#6d28d9,#4f46e5);color:white;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer">Open Settings</button>
+      <button onclick="this.parentElement.remove()" style="margin-left:8px;background:none;border:1px solid rgba(255,255,255,0.2);color:#9ca3af;border-radius:10px;padding:8px 14px;font-size:12px;cursor:pointer">Dismiss</button>
+    `;
+    document.body.appendChild(msg);
+    setTimeout(() => { const el = document.getElementById("api-exhausted-toast"); if (el) el.remove(); }, 10000);
+  }
+};
+
 // ─── PWA Install Prompt ───────────────────────────────────────────────────────
 // Capture the browser's beforeinstallprompt event for custom install UX
 let deferredInstallPrompt: any = null;

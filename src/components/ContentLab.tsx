@@ -6,11 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap, MessageSquarePlus, ShieldCheck, X } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap, MessageSquarePlus } from "lucide-react";
 import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, triggerPuterSignIn, AuditResult, GenerateResult } from "@/lib/puterAI";
 import { ContentType, RUBRICS } from "@/lib/auditRubrics";
 import { useToast } from "@/hooks/use-toast";
 import { useRAG } from "@/hooks/useRAG";
+import { AuditScorePopup } from "@/components/AuditScorePopup";
 
 
 function sanitize(text: string): string {
@@ -218,109 +219,7 @@ CRITICAL INSTRUCTIONS:
 
 
 
-function AuditReport({ result }: { result: AuditResult }) {
-  let displayOverall = result.overall;
-  if (displayOverall <= 10) displayOverall = displayOverall * 10;
-  const cleanRewritten = sanitize(result.rewritten);
 
-  const whatWorks = result.scores.filter(s => s.score >= 7.5);
-  const whatToImprove = result.scores.filter(s => s.score < 7.5);
-
-  return (
-    <Card className="p-6 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <div className="text-sm text-muted-foreground">Overall Performance Score</div>
-          <div className="text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            {displayOverall}<span className="text-2xl text-muted-foreground">/100</span>
-          </div>
-        </div>
-        <Badge variant="secondary" className="text-sm px-3 py-2 max-w-md leading-relaxed">{result.verdict}</Badge>
-      </div>
-
-      {/* Visual Gradient Slider Track */}
-      <div className="space-y-2 border-t pt-4">
-        <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-          <span>Critical Failures</span>
-          <span>Needs Refinement</span>
-          <span>Elite Content</span>
-        </div>
-        <div className="relative pt-1.5">
-          <div className="h-3 bg-gradient-to-r from-red-500 via-yellow-500 via-primary to-green-500 rounded-full w-full opacity-80 shadow-inner" />
-          <div 
-            className="absolute top-0 w-6 h-6 rounded-full bg-white border-2 border-primary shadow-lg flex items-center justify-center -translate-y-[2px] transition-all duration-700 ease-out"
-            style={{ left: `calc(${displayOverall}% - 12px)` }}
-          >
-            <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
-          </div>
-        </div>
-        <div className="text-center text-[10px] text-muted-foreground">
-          Score calibrated using 2026 LinkedIn organic delivery models
-        </div>
-      </div>
-
-      {/* What Works & What to Improve (Qualitative breakdown, no numbers) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4">
-        {/* What Works */}
-        <div className="space-y-3">
-          <h4 className="font-semibold text-sm text-green-400 flex items-center gap-1.5">
-            <span className="text-lg">✓</span> What Works Well
-          </h4>
-          {whatWorks.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No areas currently meet the elite baseline.</p>
-          ) : (
-            <ul className="space-y-2">
-              {whatWorks.map(s => (
-                <li key={s.key} className="text-xs text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">{s.name}</strong>: Demonstrates proper alignment with organic reach standards.
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* What to Improve */}
-        <div className="space-y-3 border-t md:border-t-0 md:border-l md:pl-6 pt-4 md:pt-0">
-          <h4 className="font-semibold text-sm text-yellow-400 flex items-center gap-1.5">
-            <span className="text-lg">⚠️</span> Areas to Optimize
-          </h4>
-          {whatToImprove.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Excellent work! Zero critical defects found.</p>
-          ) : (
-            <ul className="space-y-2.5">
-              {whatToImprove.map(s => (
-                <li key={s.key} className="text-xs text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">{s.name}</strong>:
-                  <div className="pl-2 border-l border-destructive/30 mt-1">
-                    <div className="text-[11px] text-destructive/80 font-medium">Issue: {s.issue}</div>
-                    <div className="text-[11px] text-primary font-medium">Fix: {s.fix}</div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-
-      {result.voiceFingerprint && (
-        <VoiceFingerprintCard fingerprint={result.voiceFingerprint} />
-      )}
-
-      <div className="pt-4 border-t">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="font-semibold flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" /> Rewritten 10/10 version
-          </h4>
-          <CopyButton text={cleanRewritten} />
-        </div>
-        <div className="bg-muted/50 p-4 rounded-md whitespace-pre-wrap text-sm font-mono leading-relaxed">
-          {cleanRewritten}
-        </div>
-        <RefinementBox baseText={cleanRewritten} />
-      </div>
-    </Card>
-  );
-}
 
 type GenState = "idle" | "loading" | "questions" | "answering" | "blocked" | "result" | "clarification";
 
@@ -719,6 +618,7 @@ function AuditPanel({ type }: { type: ContentType }) {
   const [imageDesc, setImageDesc] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AuditResult | null>(null);
+  const [showPopup, setShowPopup] = useState(false);
   const { toast } = useToast();
 
   const run = async () => {
@@ -727,14 +627,25 @@ function AuditPanel({ type }: { type: ContentType }) {
     try {
       const r = await auditContent({ type, content, imageDescription: imageDesc });
       setResult(r);
+      setShowPopup(true);
     } catch (e: any) {
       if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
         if ((window as any).showPuterAuthDialog) {
           (window as any).showPuterAuthDialog("exhausted", run);
+        } else {
+          toast({
+            variant: "destructive",
+            description: "API credits exhausted. Configure your own API key in settings (gear icon).",
+          });
         }
       } else if (isAuthError(e)) {
         if ((window as any).showPuterAuthDialog) {
           (window as any).showPuterAuthDialog("welcome", run);
+        } else {
+          toast({
+            variant: "destructive",
+            description: "Authentication error. Configure your API key in settings (gear icon).",
+          });
         }
       } else {
         toast({
@@ -747,6 +658,12 @@ function AuditPanel({ type }: { type: ContentType }) {
     }
   };
 
+  const handleClosePopup = () => setShowPopup(false);
+
+  const handleGetPlaybook = () => {
+    setShowPopup(false);
+    document.getElementById("user-intent-section")?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <div className="space-y-6">
@@ -788,7 +705,19 @@ function AuditPanel({ type }: { type: ContentType }) {
         </div>
       </Card>
 
-      {result && <AuditReport result={result} />}
+      {result && (
+        <AuditScorePopup
+          isOpen={showPopup}
+          onClose={handleClosePopup}
+          onGetPlaybook={handleGetPlaybook}
+          score={result.overall <= 10 ? result.overall * 10 : result.overall}
+          verdict={result.verdict}
+          rewritten={sanitize(result.rewritten)}
+          scores={result.scores}
+          voiceFingerprint={result.voiceFingerprint}
+        />
+      )}
+
       <TopicGenerator
         type={type}
         onUseGeneratedContent={(text) => {
@@ -925,16 +854,13 @@ export function ContentLab() {
 
   useEffect(() => {
     const handleFallback = (e: any) => {
-      toast({
-        title: "Puter AI Busy / Limit Reached",
-        description: e.detail?.message || "Switching to backup API...",
-      });
+      console.warn("[AlgoCheat] Fallback active:", e.detail?.message);
     };
     window.addEventListener("puter-fallback-active", handleFallback);
     return () => {
       window.removeEventListener("puter-fallback-active", handleFallback);
     };
-  }, [toast]);
+  }, []);
 
   return (
     <section id="content-lab" className="mb-16 scroll-mt-20 relative">

@@ -28,11 +28,6 @@ export function APISettingsModal() {
       setOpenaiKey(savedKey);
       setApiUrl(savedUrl);
       setApiModel(savedModel);
-    } else {
-      // Pre-fill with user's requested Cerebras details by default if not set
-      setOpenaiKey("csk-jw9rm35ffev3v8ec8jm588594y26xr4kxck4mr642k56fpjj");
-      setApiUrl("https://api.cerebras.ai/v1/chat/completions");
-      setApiModel("gpt-oss-120b");
     }
     setPuterToken(savedToken);
 
