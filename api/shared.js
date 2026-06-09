@@ -45,7 +45,6 @@ export function parseJSON(raw) {
 }
 
 export async function callPuterAI(puterWrapper, prompt) {
-  // 1. Primary Engine: Cerebras API (or custom configuration passed via request headers)
   const req = puterWrapper?.req;
   const customKey = req?.headers?.["x-custom-api-key"];
   const customUrl = req?.headers?.["x-custom-api-url"];
@@ -74,52 +73,22 @@ export async function callPuterAI(puterWrapper, prompt) {
     }
   }
 
-  try {
-    const ALLOWED_API_HOSTS = ["api.openai.com", "api.cerebras.ai", "api.puter.com"];
-    const parsedUrl = new URL(activeUrl);
-    if (!ALLOWED_API_HOSTS.includes(parsedUrl.hostname)) {
-      throw new Error("Disallowed API URL");
-    }
-
-    const response = await fetch(activeUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${activeKey}`,
-      },
-      body: JSON.stringify({
-        model: activeModel,
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.2,
-      }),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const text = data.choices[0].message.content;
-      return parseJSON(text);
-    }
-    const errText = await response.text();
-    console.warn(`Direct API call to ${activeUrl} failed with status ${response.status}: ${errText}`);
-  } catch (err) {
-    console.warn(`Direct API call to ${activeUrl} failed:`, err);
-  }
-
-  // 2. Fallback Engine: OpenAI API Key (if configured on Vercel)
-  const openAIKey = process.env.OPENAI_API_KEY;
-  const hasValidOpenAIKey = openAIKey && openAIKey.trim().startsWith("sk-");
-
-  if (hasValidOpenAIKey) {
+  async function tryProviders() {
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const ALLOWED_API_HOSTS = ["api.openai.com", "api.cerebras.ai", "api.puter.com"];
+      const parsedUrl = new URL(activeUrl);
+      if (!ALLOWED_API_HOSTS.includes(parsedUrl.hostname)) {
+        throw new Error("Disallowed API URL");
+      }
+
+      const response = await fetch(activeUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${openAIKey}`,
+          "Authorization": `Bearer ${activeKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: activeModel,
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" },
           temperature: 0.2,
@@ -132,48 +101,86 @@ export async function callPuterAI(puterWrapper, prompt) {
         return parseJSON(text);
       }
       const errText = await response.text();
-      console.warn(`Direct OpenAI API call failed with status ${response.status}: ${errText}`);
+      console.warn(`Direct API call to ${activeUrl} failed with status ${response.status}: ${errText}`);
     } catch (err) {
-      console.warn("Direct OpenAI API call failed:", err);
+      console.warn(`Direct API call to ${activeUrl} failed:`, err);
     }
+
+    const openAIKey = process.env.OPENAI_API_KEY;
+    const hasValidOpenAIKey = openAIKey && openAIKey.trim().startsWith("sk-");
+
+    if (hasValidOpenAIKey) {
+      try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openAIKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" },
+            temperature: 0.2,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const text = data.choices[0].message.content;
+          return parseJSON(text);
+        }
+        const errText = await response.text();
+        console.warn(`Direct OpenAI API call failed with status ${response.status}: ${errText}`);
+      } catch (err) {
+        console.warn("Direct OpenAI API call failed:", err);
+      }
+    }
+
+    const puterAuthToken = process.env.PUTER_AUTH_TOKEN;
+    if (puterAuthToken && puterAuthToken.trim().length > 0) {
+      try {
+        const response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${puterAuthToken.trim()}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+
+        if (response.status === 402) {
+          const err = new Error("insufficient_funds");
+          err.status = 402;
+          throw err;
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          const text = data.choices[0].message.content;
+          return parseJSON(text);
+        }
+        const errText = await response.text();
+        console.warn(`Backend Puter REST API call failed with status ${response.status}: ${errText}`);
+      } catch (err) {
+        if (err.status === 402) throw err;
+        console.warn("Backend Puter REST API call failed:", err);
+      }
+    }
+
+    return null;
   }
 
-  // If direct OpenAI is unavailable or has failed, fallback to Puter's REST API using the PUTER_AUTH_TOKEN
-  const puterAuthToken = process.env.PUTER_AUTH_TOKEN;
-  if (puterAuthToken && puterAuthToken.trim().length > 0) {
-    try {
-      const response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${puterAuthToken.trim()}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
+  let result = await tryProviders();
+  if (result !== null) return result;
 
-      if (response.status === 402) {
-        const err = new Error("insufficient_funds");
-        err.status = 402;
-        throw err;
-      }
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  result = await tryProviders();
+  if (result !== null) return result;
 
-      if (response.ok) {
-        const data = await response.json();
-        const text = data.choices[0].message.content;
-        return parseJSON(text);
-      }
-      const errText = await response.text();
-      console.warn(`Backend Puter REST API call failed with status ${response.status}: ${errText}`);
-    } catch (err) {
-      if (err.status === 402) throw err;
-      console.warn("Backend Puter REST API call failed:", err);
-    }
-  }
-
-  // If both fail/are unavailable, throw a 503 error to trigger client-side Puter AI fallback.
   const err = new Error("backend_openai_unavailable");
   err.status = 503;
   throw err;
@@ -327,18 +334,23 @@ ALGORITHM RULES:
 ${r.rules}
 
 CRITICAL WRITING RULES:
-- **Hook Strength**: Begin with an immediate, high-impact scroll-stopping hook in the first 2 lines (under 210 characters). Add a direct, time-bound benefit or a strong contrarian/pattern-interrupt opener.
-- **Dwell-Time Layout**: Write in a clean, highly scannable, mobile-optimized format. Use plenty of whitespace and short 1-2 sentence paragraphs. Break lines for readability.
-- **Authentic Voice**: Write in a strong, personal first-person voice ("I", "my", "we"). Avoid generic, robotic AI vocabulary (e.g. do NOT use words like "testament", "leverage", "moreover", "revolutionize", "delve").
-- **Value Density**: Inject real, concrete numbers, percentages, timelines, or metrics. Back up every claim with data points.
-- **Conversation Trigger**: Always conclude with a single, highly engaging, open-ended question that prompts a real discussion (before hashtags).
-- **Hashtag Discipline**: Add exactly 3 to 5 highly relevant, specific niche hashtags at the very bottom. Never exceed 5 hashtags.
+Above all, write like a REAL PERSON. Not a marketer. Not a tool. Not a guru.
+- Use sentence fragments sometimes. Start with 'Honestly...', 'Look...', 'Here's the thing...'
+- Vary sentence length. Mix a 3-word sentence with a 20-word sentence.
+- Use contractions: 'I'm', 'don't', 'you'll', 'can't', 'it's'
+- Add a personal opinion or feeling: 'I was frustrated by...', 'What surprised me was...'
+- Avoid perfectly parallel structures. Don't list 4 things with the same emoji prefix.
+- The CTA should sound like a conversation: 'What do you think?', 'Curious if you've seen this too...'
+- Don't say 'audit, rewrite, ship' or '10/10' or 'perfect score' - it sounds like a sales page.
+- One small typo or informal phrasing is better than sterile perfection.
+- Write like you're talking to ONE person, not an audience.
 
-CRITICAL FORMATTING INSTRUCTION (Strict):
-- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look dirty, broken, and amateurish. Keep all text plain. Write headings in plain text (optionally in UPPERCASE followed by a colon or a newline).
-- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field in the JSON response must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation paragraphs, compliance reviews, summaries, or justifications of why the post scores 10/10 (such as "The post hooks readers...", "This post scorecard hits...") inside the "content" field. Place all such explanations, critiques, and scorecard notes strictly in the "notes" field of the JSON. Including any self-justification inside the "content" field is a critical failure.
-- **Topic Input Handling (No Verbatim Copy-Paste)**: If the user's "topic" input already contains a draft headline, hook, or title, you MUST NOT copy it verbatim at the top of the generated post. Instead, use it as context to write a fresh, unique, scroll-stopping title/hook, and ensure that the metrics and phrases are not duplicated repetitively between the header and the body.
-- **Grammar & Capitalization**: Ensure every sentence, heading, list item, and bullet point starts with a capitalized letter. Never output lowercase starts for bullets or list items.
+Format for readability, not perfection. Short paragraphs. White space. But don't make it look templated.
+
+CRITICAL FORMATTING NOTES (Strict):
+- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look broken and amateurish. Keep all text plain.
+- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation, compliance reviews, summaries, or justifications of why the post scores perfectly inside the "content" field. Place all such explanations strictly in the "notes" field.
+- **Topic Input Handling**: If the user's "topic" input already contains a draft headline, hook, or title, do NOT copy it verbatim at the top. Use it as context to write a fresh hook and avoid duplicating metrics/phrases.
 
 Return ONLY valid JSON (no markdown) in this exact shape:
 {
@@ -366,18 +378,23 @@ CRITICAL: Use ONLY the facts from the product truth file above. Do NOT invent fe
 prices, team members, metrics, or stories not listed. Authenticity is the entire point.
 
 CRITICAL WRITING RULES:
-- **Hook Strength**: Begin with an immediate, high-impact scroll-stopping hook in the first 2 lines (under 210 characters). Add a direct, time-bound benefit or a strong contrarian/pattern-interrupt opener.
-- **Dwell-Time Layout**: Write in a clean, highly scannable, mobile-optimized format. Use plenty of whitespace and short 1-2 sentence paragraphs. Break lines for readability.
-- **Authentic Voice**: Write in a strong, personal first-person voice ("I", "my", "we"). Avoid generic, robotic AI vocabulary (e.g. do NOT use words like "testament", "leverage", "moreover", "revolutionize", "delve").
-- **Value Density**: Inject real, concrete numbers, percentages, timelines, or metrics. Back up every claim with data points.
-- **Conversation Trigger**: Always conclude with a single, highly engaging, open-ended question that prompts a real discussion (before hashtags).
-- **Hashtag Discipline**: Add exactly 3 to 5 highly relevant, specific niche hashtags at the very bottom. Never exceed 5 hashtags.
+Above all, write like a REAL PERSON. Not a marketer. Not a tool. Not a guru.
+- Use sentence fragments sometimes. Start with 'Honestly...', 'Look...', 'Here's the thing...'
+- Vary sentence length. Mix a 3-word sentence with a 20-word sentence.
+- Use contractions: 'I'm', 'don't', 'you'll', 'can't', 'it's'
+- Add a personal opinion or feeling: 'I was frustrated by...', 'What surprised me was...'
+- Avoid perfectly parallel structures. Don't list 4 things with the same emoji prefix.
+- The CTA should sound like a conversation: 'What do you think?', 'Curious if you've seen this too...'
+- Don't say 'audit, rewrite, ship' or '10/10' or 'perfect score' - it sounds like a sales page.
+- One small typo or informal phrasing is better than sterile perfection.
+- Write like you're talking to ONE person, not an audience.
 
-CRITICAL FORMATTING INSTRUCTION (Strict):
-- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look dirty, broken, and amateurish. Keep all text plain. Write headings in plain text (optionally in UPPERCASE followed by a colon or a newline).
-- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field in the JSON response must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation paragraphs, compliance reviews, summaries, or justifications of why the post scores 10/10 (such as "The post hooks readers...", "This post scorecard hits...") inside the "content" field. Place all such explanations, critiques, and scorecard notes strictly in the "notes" field of the JSON. Including any self-justification inside the "content" field is a critical failure.
-- **Topic Input Handling (No Verbatim Copy-Paste)**: If the user's "topic" input already contains a draft headline, hook, or title, you MUST NOT copy it verbatim at the top of the generated post. Instead, use it as context to write a fresh, unique, scroll-stopping title/hook, and ensure that the metrics and phrases are not duplicated repetitively between the header and the body.
-- **Grammar & Capitalization**: Ensure every sentence, heading, list item, and bullet point starts with a capitalized letter. Never output lowercase starts for bullets or list items.
+Format for readability, not perfection. Short paragraphs. White space. But don't make it look templated.
+
+CRITICAL FORMATTING NOTES (Strict):
+- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look broken and amateurish. Keep all text plain.
+- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation, compliance reviews, summaries, or justifications of why the post scores perfectly inside the "content" field. Place all such explanations strictly in the "notes" field.
+- **Topic Input Handling**: If the user's "topic" input already contains a draft headline, hook, or title, do NOT copy it verbatim at the top. Use it as context to write a fresh hook and avoid duplicating metrics/phrases.
 
 Return ONLY valid JSON:
 {
@@ -447,18 +464,23 @@ ALGORITHM RULES:
 ${r.rules}
 
 CRITICAL WRITING RULES:
-- **Hook Strength**: Begin with an immediate, high-impact scroll-stopping hook in the first 2 lines (under 210 characters). Add a direct, time-bound benefit or a strong contrarian/pattern-interrupt opener.
-- **Dwell-Time Layout**: Write in a clean, highly scannable, mobile-optimized format. Use plenty of whitespace and short 1-2 sentence paragraphs. Break lines for readability.
-- **Authentic Voice**: Write in a strong, personal first-person voice ("I", "my", "we"). Avoid generic, robotic AI vocabulary (e.g. do NOT use words like "testament", "leverage", "moreover", "revolutionize", "delve").
-- **Value Density**: Inject real, concrete numbers, percentages, timelines, or metrics. Back up every claim with data points.
-- **Conversation Trigger**: Always conclude with a single, highly engaging, open-ended question that prompts a real discussion (before hashtags).
-- **Hashtag Discipline**: Add exactly 3 to 5 highly relevant, specific niche hashtags at the very bottom. Never exceed 5 hashtags.
+Above all, write like a REAL PERSON. Not a marketer. Not a tool. Not a guru.
+- Use sentence fragments sometimes. Start with 'Honestly...', 'Look...', 'Here's the thing...'
+- Vary sentence length. Mix a 3-word sentence with a 20-word sentence.
+- Use contractions: 'I'm', 'don't', 'you'll', 'can't', 'it's'
+- Add a personal opinion or feeling: 'I was frustrated by...', 'What surprised me was...'
+- Avoid perfectly parallel structures. Don't list 4 things with the same emoji prefix.
+- The CTA should sound like a conversation: 'What do you think?', 'Curious if you've seen this too...'
+- Don't say 'audit, rewrite, ship' or '10/10' or 'perfect score' - it sounds like a sales page.
+- One small typo or informal phrasing is better than sterile perfection.
+- Write like you're talking to ONE person, not an audience.
 
-CRITICAL FORMATTING INSTRUCTION (Strict):
-- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look dirty, broken, and amateurish. Keep all text plain. Write headings in plain text (optionally in UPPERCASE followed by a colon or a newline).
-- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field in the JSON response must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation paragraphs, compliance reviews, summaries, or justifications of why the post scores 10/10 (such as "The post hooks readers...", "This post scorecard hits...") inside the "content" field. Place all such explanations, critiques, and scorecard notes strictly in the "notes" field of the JSON. Including any self-justification inside the "content" field is a critical failure.
-- **Topic Input Handling (No Verbatim Copy-Paste)**: If the user's "topic" input already contains a draft headline, hook, or title, you MUST NOT copy it verbatim at the top of the generated post. Instead, use it as context to write a fresh, unique, scroll-stopping title/hook, and ensure that the metrics and phrases are not duplicated repetitively between the header and the body.
-- **Grammar & Capitalization**: Ensure every sentence, heading, list item, and bullet point starts with a capitalized letter. Never output lowercase starts for bullets or list items.
+Format for readability, not perfection. Short paragraphs. White space. But don't make it look templated.
+
+CRITICAL FORMATTING NOTES (Strict):
+- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look broken and amateurish. Keep all text plain.
+- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation, compliance reviews, summaries, or justifications of why the post scores perfectly inside the "content" field. Place all such explanations strictly in the "notes" field.
+- **Topic Input Handling**: If the user's "topic" input already contains a draft headline, hook, or title, do NOT copy it verbatim at the top. Use it as context to write a fresh hook and avoid duplicating metrics/phrases.
 
 Return ONLY valid JSON:
 {
@@ -598,7 +620,7 @@ If actual performance data is provided:
 4. If audit score > 7.0 but performance is Below Average: Flag DISTRIBUTION PROBLEM (low reach account, timing, shadowban) but do not lower content score.
 
 ### REWRITE
-Deliver a voice-preserved 10/10 rewrite in the 'rewritten' field. Implement all fixes defined for parameters scoring < 10. Preserve style, rhythm, and spacing. Do not output markdown asterisks for bolding.
+Deliver a rewrite in the 'rewritten' field — make it sound like a real person wrote it. Implement all fixes defined for parameters scoring < 10. Preserve the author's voice, rhythm, and natural quirks. No markdown asterisks.
 
 ### REPORT
 Return ONLY valid JSON (no markdown wrapping) in this exact shape. Do NOT include weightedScore in the scores array.

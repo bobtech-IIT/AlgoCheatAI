@@ -6,8 +6,6 @@ import { FeatureBento } from "@/components/landing/FeatureBento";
 import { ProductShowcase } from "@/components/landing/ProductShowcase";
 import { ContentLab } from "@/components/ContentLab";
 import { APISettingsModal } from "@/components/APISettingsModal";
-import { StatsBand } from "@/components/landing/StatsBand";
-import { Testimonials } from "@/components/landing/Testimonials";
 import { FAQ } from "@/components/landing/FAQ";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { Footer } from "@/components/landing/Footer";
@@ -32,8 +30,6 @@ const Index = () => {
 
         <CaseStudiesSection />
 
-        <StatsBand />
-
         <section id="user-intent-section" className="py-20 md:py-24">
           <div className="container">
             <UserIntentSection />
@@ -44,7 +40,6 @@ const Index = () => {
 
         <FeatureBento />
         <ProductShowcase />
-        <Testimonials />
         <FAQ />
         <FinalCTA />
       </main>

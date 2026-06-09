@@ -11,7 +11,6 @@ import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, get
 import { ContentType, RUBRICS } from "@/lib/auditRubrics";
 import { useToast } from "@/hooks/use-toast";
 import { useRAG } from "@/hooks/useRAG";
-import { AuditScorePopup } from "@/components/AuditScorePopup";
 
 
 function sanitize(text: string): string {
@@ -85,34 +84,6 @@ function CopyButton({ text }: { text: string }) {
       {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
       {copied ? "Copied" : "Copy"}
     </Button>
-  );
-}
-
-function VoiceFingerprintCard({ fingerprint }: { fingerprint: string[] | string }) {
-  const lines = Array.isArray(fingerprint)
-    ? fingerprint
-    : fingerprint
-        .split(/\n|\d\.\s|·\s*|- \s*/)
-        .map(s => s.trim())
-        .filter(Boolean);
-  return (
-    <Card className="p-5 border border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-sm">🎙️</div>
-        <div>
-          <h4 className="font-semibold text-sm">Your Writing Fingerprint</h4>
-          <p className="text-xs text-muted-foreground">Detected voice — preserved in your rewrite</p>
-        </div>
-      </div>
-      <ul className="space-y-1.5">
-        {lines.map((line, i) => (
-          <li key={i} className="text-xs text-muted-foreground flex gap-2">
-            <span className="text-primary font-bold mt-0.5 flex-shrink-0">·</span>
-            <span>{line}</span>
-          </li>
-        ))}
-      </ul>
-    </Card>
   );
 }
 
@@ -618,7 +589,6 @@ function AuditPanel({ type }: { type: ContentType }) {
   const [imageDesc, setImageDesc] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AuditResult | null>(null);
-  const [showPopup, setShowPopup] = useState(false);
   const { toast } = useToast();
 
   const run = async () => {
@@ -627,7 +597,6 @@ function AuditPanel({ type }: { type: ContentType }) {
     try {
       const r = await auditContent({ type, content, imageDescription: imageDesc });
       setResult(r);
-      setShowPopup(true);
     } catch (e: any) {
       if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
         if ((window as any).showPuterAuthDialog) {
@@ -656,13 +625,6 @@ function AuditPanel({ type }: { type: ContentType }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleClosePopup = () => setShowPopup(false);
-
-  const handleGetPlaybook = () => {
-    setShowPopup(false);
-    document.getElementById("user-intent-section")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -705,18 +667,74 @@ function AuditPanel({ type }: { type: ContentType }) {
         </div>
       </Card>
 
-      {result && (
-        <AuditScorePopup
-          isOpen={showPopup}
-          onClose={handleClosePopup}
-          onGetPlaybook={handleGetPlaybook}
-          score={result.overall <= 10 ? result.overall * 10 : result.overall}
-          verdict={result.verdict}
-          rewritten={sanitize(result.rewritten)}
-          scores={result.scores}
-          voiceFingerprint={result.voiceFingerprint}
-        />
-      )}
+      {result && (() => {
+        const overall = result.overall <= 10 ? result.overall * 10 : result.overall;
+        const clamped = Math.max(0, Math.min(100, overall));
+        const color = clamped <= 20 ? "#dc2626" : clamped <= 40 ? "#ea580c" : clamped <= 60 ? "#ca8a04" : clamped <= 80 ? "#16a34a" : "#2563eb";
+        const radius = 78;
+        const circ = 2 * Math.PI * radius;
+        const offset = circ * (1 - clamped / 100);
+        const goodItems = result.scores.filter(s => s.score >= 7);
+        const badItems = result.scores.filter(s => s.score < 7);
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-5">
+              <div className="flex flex-col items-center">
+                <svg viewBox="0 0 200 200" className="w-44 h-44 -rotate-90">
+                  <circle cx="100" cy="100" r={radius} fill="none" stroke="currentColor" strokeWidth="10" className="text-white/[0.07]" />
+                  <circle cx="100" cy="100" r={radius} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset} className="transition-all duration-1000 ease-out drop-shadow-[0_0_8px]" />
+                </svg>
+                <div className="flex flex-col items-center -mt-32">
+                  <span className="text-5xl font-display font-bold tracking-tight" style={{ color }}>{clamped}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-widest mt-0.5 text-muted-foreground">/ 100</span>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                  <span className="text-green-500">✓</span> What went well
+                </h4>
+                {goodItems.length > 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {goodItems.map(i => i.name).join(", ")} — these scored strong.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No standout strengths on this draft.</p>
+                )}
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                  <span className="text-amber-500">△</span> What could be better
+                </h4>
+                {badItems.length > 0 ? (
+                  <ul className="space-y-3">
+                    {badItems.map(item => (
+                      <li key={item.key} className="text-sm">
+                        <p className="font-medium text-foreground/80">{item.name}</p>
+                        <p className="text-muted-foreground mt-0.5">{item.issue}</p>
+                        <p className="text-xs text-primary/70 mt-0.5">Fix: {item.fix}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">All parameters are in good shape!</p>
+                )}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="border border-primary/20 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold">Rewritten Post</h4>
+                  <CopyButton text={sanitize(result.rewritten)} />
+                </div>
+                <div className="bg-background p-4 rounded-lg text-sm whitespace-pre-wrap font-mono leading-relaxed border">
+                  {sanitize(result.rewritten)}
+                </div>
+              </div>
+              <RefinementBox baseText={sanitize(result.rewritten)} />
+            </div>
+          </div>
+        );
+      })()}
 
       <TopicGenerator
         type={type}

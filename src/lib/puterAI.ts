@@ -348,44 +348,44 @@ async function callWithFallback<T>(action: string, payload: any, endpoint: strin
     }
   };
 
-  // Plan A: Try client-side Puter AI (Direct fetch, keyless/guest) with 8-second timeout
   try {
     const result = await withTimeout(
       callClientSidePuterAI(action, payload),
-      8000,
+      15000,
       "timeout"
     );
     return result;
   } catch (err: any) {
-    console.warn(`Puter AI client call failed (${err.message}). Checking Plan B backup fallback...`);
+    console.warn(`Puter AI client call failed (${err.message}). Checking backup fallback...`);
 
     const config = await checkBackendConfig();
     const hasBackupKey = config.hasOpenAIKey || isCustomAPIKeyActive;
 
     if (hasBackupKey) {
-      // Enforce sessionStorage limits to protect developer key costs
       checkSessionLimit();
 
-      // Trigger custom UI event so ContentLab shows the warning toast
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent("puter-fallback-active", {
-            detail: { message: "Puter AI busy or limits reached. Routing request to backup API..." }
+            detail: { message: "Free AI busy. Routing to backup API..." }
           })
         );
       }
 
-      // Wait 1.5 seconds so user has time to see the toast notification
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
-      const apiResult = await callAPI<T>(endpoint, payload);
-      incrementSessionLimit();
-      return apiResult;
-    } else {
-      if (err.message === "timeout") {
-        throw new Error("Puter AI timed out. Please configure your own API key in the settings (Gear icon) to continue.");
+      try {
+        const apiResult = await callAPI<T>(endpoint, payload);
+        incrementSessionLimit();
+        return apiResult;
+      } catch (apiErr: any) {
+        if (apiErr.message === "backend_openai_unavailable") {
+          throw new Error("Free AI temporarily busy. Configure your own API key in Settings (gear icon) to bypass limits.");
+        }
+        throw apiErr;
       }
-      throw err;
+    } else {
+      throw new Error("Free AI temporarily busy. Configure your own API key in Settings (gear icon) to bypass limits.");
     }
   }
 }

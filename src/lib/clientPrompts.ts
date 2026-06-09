@@ -147,18 +147,23 @@ ALGORITHM RULES:
 ${r.rules}
 
 CRITICAL WRITING RULES:
-- **Hook Strength**: Begin with an immediate, high-impact scroll-stopping hook in the first 2 lines (under 210 characters). Add a direct, time-bound benefit or a strong contrarian/pattern-interrupt opener.
-- **Dwell-Time Layout**: Write in a clean, highly scannable, mobile-optimized format. Use plenty of whitespace and short 1-2 sentence paragraphs. Break lines for readability.
-- **Authentic Voice**: Write in a strong, personal first-person voice ("I", "my", "we"). Avoid generic, robotic AI vocabulary (e.g. do NOT use words like "testament", "leverage", "moreover", "revolutionize", "delve").
-- **Value Density**: Inject real, concrete numbers, percentages, timelines, or metrics. Back up every claim with data points.
-- **Conversation Trigger**: Always conclude with a single, highly engaging, open-ended question that prompts a real discussion (before hashtags).
-- **Hashtag Discipline**: Add exactly 3 to 5 highly relevant, specific niche hashtags at the very bottom. Never exceed 5 hashtags.
+Above all, write like a REAL PERSON. Not a marketer. Not a tool. Not a guru.
+- Use sentence fragments sometimes. Start with 'Honestly...', 'Look...', 'Here's the thing...'
+- Vary sentence length. Mix a 3-word sentence with a 20-word sentence.
+- Use contractions: 'I'm', 'don't', 'you'll', 'can't', 'it's'
+- Add a personal opinion or feeling: 'I was frustrated by...', 'What surprised me was...'
+- Avoid perfectly parallel structures. Don't list 4 things with the same emoji prefix.
+- The CTA should sound like a conversation: 'What do you think?', 'Curious if you've seen this too...'
+- Don't say 'audit, rewrite, ship' or '10/10' or 'perfect score' - it sounds like a sales page.
+- One small typo or informal phrasing is better than sterile perfection.
+- Write like you're talking to ONE person, not an audience.
 
-CRITICAL FORMATTING INSTRUCTION (Strict):
-- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look dirty, broken, and amateurish. Keep all text plain. Write headings in plain text (optionally in UPPERCASE followed by a colon or a newline).
-- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field in the JSON response must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation paragraphs, compliance reviews, summaries, or justifications of why the post scores 10/10 (such as "The post hooks readers...", "This post scorecard hits...") inside the "content" field. Place all such explanations, critiques, and scorecard notes strictly in the "notes" field of the JSON. Including any self-justification inside the "content" field is a critical failure.
-- **Topic Input Handling (No Verbatim Copy-Paste)**: If the user's "topic" input already contains a draft headline, hook, or title, you MUST NOT copy it verbatim at the top of the generated post. Instead, use it as context to write a fresh, unique, scroll-stopping title/hook, and ensure that the metrics and phrases are not duplicated repetitively between the header and the body.
-- **Grammar & Capitalization**: Ensure every sentence, heading, list item, and bullet point starts with a capitalized letter. Never output lowercase starts for bullets or list items.
+Format for readability, not perfection. Short paragraphs. White space. But don't make it look templated.
+
+CRITICAL FORMATTING NOTES (Strict):
+- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look broken and amateurish. Keep all text plain.
+- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation, compliance reviews, summaries, or justifications of why the post scores perfectly inside the "content" field. Place all such explanations strictly in the "notes" field.
+- **Topic Input Handling**: If the user's "topic" input already contains a draft headline, hook, or title, do NOT copy it verbatim at the top. Use it as context to write a fresh hook and avoid duplicating metrics/phrases.
 
 Return ONLY valid JSON (no markdown) in this exact shape:
 {
@@ -186,18 +191,23 @@ CRITICAL: Use ONLY the facts from the product truth file above. Do NOT invent fe
 prices, team members, metrics, or stories not listed. Authenticity is the entire point.
 
 CRITICAL WRITING RULES:
-- **Hook Strength**: Begin with an immediate, high-impact scroll-stopping hook in the first 2 lines (under 210 characters). Add a direct, time-bound benefit or a strong contrarian/pattern-interrupt opener.
-- **Dwell-Time Layout**: Write in a clean, highly scannable, mobile-optimized format. Use plenty of whitespace and short 1-2 sentence paragraphs. Break lines for readability.
-- **Authentic Voice**: Write in a strong, personal first-person voice ("I", "my", "we"). Avoid generic, robotic AI vocabulary (e.g. do NOT use words like "testament", "leverage", "moreover", "revolutionize", "delve").
-- **Value Density**: Inject real, concrete numbers, percentages, timelines, or metrics. Back up every claim with data points.
-- **Conversation Trigger**: Always conclude with a single, highly engaging, open-ended question that prompts a real discussion (before hashtags).
-- **Hashtag Discipline**: Add exactly 3 to 5 highly relevant, specific niche hashtags at the very bottom. Never exceed 5 hashtags.
+Above all, write like a REAL PERSON. Not a marketer. Not a tool. Not a guru.
+- Use sentence fragments sometimes. Start with 'Honestly...', 'Look...', 'Here's the thing...'
+- Vary sentence length. Mix a 3-word sentence with a 20-word sentence.
+- Use contractions: 'I'm', 'don't', 'you'll', 'can't', 'it's'
+- Add a personal opinion or feeling: 'I was frustrated by...', 'What surprised me was...'
+- Avoid perfectly parallel structures. Don't list 4 things with the same emoji prefix.
+- The CTA should sound like a conversation: 'What do you think?', 'Curious if you've seen this too...'
+- Don't say 'audit, rewrite, ship' or '10/10' or 'perfect score' - it sounds like a sales page.
+- One small typo or informal phrasing is better than sterile perfection.
+- Write like you're talking to ONE person, not an audience.
 
-CRITICAL FORMATTING INSTRUCTION (Strict):
-- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look dirty, broken, and amateurish. Keep all text plain. Write headings in plain text (optionally in UPPERCASE followed by a colon or a newline).
-- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field in the JSON response must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation paragraphs, compliance reviews, summaries, or justifications of why the post scores 10/10 (such as "The post hooks readers...", "This post scorecard hits...") inside the "content" field. Place all such explanations, critiques, and scorecard notes strictly in the "notes" field of the JSON. Including any self-justification inside the "content" field is a critical failure.
-- **Topic Input Handling (No Verbatim Copy-Paste)**: If the user's "topic" input already contains a draft headline, hook, or title, you MUST NOT copy it verbatim at the top of the generated post. Instead, use it as context to write a fresh, unique, scroll-stopping title/hook, and ensure that the metrics and phrases are not duplicated repetitively between the header and the body.
-- **Grammar & Capitalization**: Ensure every sentence, heading, list item, and bullet point starts with a capitalized letter. Never output lowercase starts for bullets or list items.
+Format for readability, not perfection. Short paragraphs. White space. But don't make it look templated.
+
+CRITICAL FORMATTING NOTES (Strict):
+- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look broken and amateurish. Keep all text plain.
+- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation, compliance reviews, summaries, or justifications of why the post scores perfectly inside the "content" field. Place all such explanations strictly in the "notes" field.
+- **Topic Input Handling**: If the user's "topic" input already contains a draft headline, hook, or title, do NOT copy it verbatim at the top. Use it as context to write a fresh hook and avoid duplicating metrics/phrases.
 
 Return ONLY valid JSON:
 {
@@ -267,18 +277,23 @@ ALGORITHM RULES:
 ${r.rules}
 
 CRITICAL WRITING RULES:
-- **Hook Strength**: Begin with an immediate, high-impact scroll-stopping hook in the first 2 lines (under 210 characters). Add a direct, time-bound benefit or a strong contrarian/pattern-interrupt opener.
-- **Dwell-Time Layout**: Write in a clean, highly scannable, mobile-optimized format. Use plenty of whitespace and short 1-2 sentence paragraphs. Break lines for readability.
-- **Authentic Voice**: Write in a strong, personal first-person voice ("I", "my", "we"). Avoid generic, robotic AI vocabulary (e.g. do NOT use words like "testament", "leverage", "moreover", "revolutionize", "delve").
-- **Value Density**: Inject real, concrete numbers, percentages, timelines, or metrics. Back up every claim with data points.
-- **Conversation Trigger**: Always conclude with a single, highly engaging, open-ended question that prompts a real discussion (before hashtags).
-- **Hashtag Discipline**: Add exactly 3 to 5 highly relevant, specific niche hashtags at the very bottom. Never exceed 5 hashtags.
+Above all, write like a REAL PERSON. Not a marketer. Not a tool. Not a guru.
+- Use sentence fragments sometimes. Start with 'Honestly...', 'Look...', 'Here's the thing...'
+- Vary sentence length. Mix a 3-word sentence with a 20-word sentence.
+- Use contractions: 'I'm', 'don't', 'you'll', 'can't', 'it's'
+- Add a personal opinion or feeling: 'I was frustrated by...', 'What surprised me was...'
+- Avoid perfectly parallel structures. Don't list 4 things with the same emoji prefix.
+- The CTA should sound like a conversation: 'What do you think?', 'Curious if you've seen this too...'
+- Don't say 'audit, rewrite, ship' or '10/10' or 'perfect score' - it sounds like a sales page.
+- One small typo or informal phrasing is better than sterile perfection.
+- Write like you're talking to ONE person, not an audience.
 
-CRITICAL FORMATTING INSTRUCTION (Strict):
-- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look dirty, broken, and amateurish. Keep all text plain. Write headings in plain text (optionally in UPPERCASE followed by a colon or a newline).
-- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field in the JSON response must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation paragraphs, compliance reviews, summaries, or justifications of why the post scores 10/10 (such as "The post hooks readers...", "This post scorecard hits...") inside the "content" field. Place all such explanations, critiques, and scorecard notes strictly in the "notes" field of the JSON. Including any self-justification inside the "content" field is a critical failure.
-- **Topic Input Handling (No Verbatim Copy-Paste)**: If the user's "topic" input already contains a draft headline, hook, or title, you MUST NOT copy it verbatim at the top of the generated post. Instead, use it as context to write a fresh, unique, scroll-stopping title/hook, and ensure that the metrics and phrases are not duplicated repetitively between the header and the body.
-- **Grammar & Capitalization**: Ensure every sentence, heading, list item, and bullet point starts with a capitalized letter. Never output lowercase starts for bullets or list items.
+Format for readability, not perfection. Short paragraphs. White space. But don't make it look templated.
+
+CRITICAL FORMATTING NOTES (Strict):
+- Do NOT use markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). LinkedIn does not render Markdown, so including literal asterisks makes the text look broken and amateurish. Keep all text plain.
+- **No Meta-Analysis/Scorecard in Content (ABSOLUTE BAN)**: The "content" field must contain ONLY the actual post text ready to paste on LinkedIn. You are STRICTLY FORBIDDEN from including any meta-commentary, scorecard analysis, self-evaluation, compliance reviews, summaries, or justifications of why the post scores perfectly inside the "content" field. Place all such explanations strictly in the "notes" field.
+- **Topic Input Handling**: If the user's "topic" input already contains a draft headline, hook, or title, do NOT copy it verbatim at the top. Use it as context to write a fresh hook and avoid duplicating metrics/phrases.
 
 Return ONLY valid JSON:
 {
@@ -423,7 +438,7 @@ If actual performance data is provided:
 4. If audit score > 7.0 but performance is Below Average: Flag DISTRIBUTION PROBLEM (low reach account, timing, shadowban) but do not lower content score.
 
 ### REWRITE
-Deliver a voice-preserved 10/10 rewrite in the 'rewritten' field. Implement all fixes defined for parameters scoring < 10. Preserve style, rhythm, and spacing. Do not output markdown asterisks for bolding.
+Deliver a rewrite in the 'rewritten' field — make it sound like a real person wrote it. Implement all fixes defined for parameters scoring < 10. Preserve the author's voice, rhythm, and natural quirks. No markdown asterisks.
 
 ### REPORT
 Return ONLY valid JSON (no markdown wrapping) in this exact shape. Do NOT include weightedScore in the scores array.
