@@ -629,7 +629,7 @@ Return ONLY valid JSON (no markdown wrapping) in this exact shape. Do NOT includ
   "overall": <0-100 integer>,
   "confidence": <0.0-1.0>,
   "detectedFormat": "<TEXT_ONLY | IMAGE_SINGLE | IMAGE_MULTI | CAROUSEL_DOC | VIDEO | POLL | TEXT_LINK_PREVIEW>",
-  "verdict": "<one sentence verdict>",
+  "verdict": "<2-3 line psychological statement summarizing the author's strategic opportunity and the emotional takeaway for the reader>",
   "scores": [
     { "key": "hook", "name": "Hook Strength", "score": <raw 1-10>, "weight": <approximate weight>, "issue": "<what is wrong>", "fix": "<specific fix>" },
     { "key": "dwell", "name": "Dwell-Time Structure", "score": <raw 1-10>, "weight": <approximate weight>, "issue": "<what is wrong>", "fix": "<specific fix>" },

@@ -756,17 +756,16 @@ function AuditPanel({ type }: { type: ContentType }) {
                   <span className="text-amber-500">△</span> What could be better
                 </h4>
                 {badItems.length > 0 ? (
-                  <ul className="space-y-3">
-                    {badItems.map(item => (
-                      <li key={item.key} className="text-sm">
-                        <p className="font-medium text-foreground/80">{item.name}</p>
-                        <p className="text-muted-foreground mt-0.5">{item.issue}</p>
-                        <p className="text-xs text-primary/70 mt-0.5">Fix: {item.fix}</p>
-                      </li>
-                    ))}
-                  </ul>
+                  <p className="text-sm text-muted-foreground">
+                    {badItems.map(i => i.name).join(", ")} — these need attention.
+                  </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">All parameters are in good shape!</p>
+                )}
+                {result.verdict && (
+                  <p className="text-xs mt-3 italic leading-relaxed text-muted-foreground/80 border-l-2 border-primary/30 pl-3">
+                    {result.verdict}
+                  </p>
                 )}
               </div>
             </div>
