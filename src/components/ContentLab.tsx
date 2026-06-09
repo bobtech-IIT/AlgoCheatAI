@@ -7,7 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap, MessageSquarePlus } from "lucide-react";
-import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, triggerPuterSignIn, AuditResult, GenerateResult } from "@/lib/puterAI";
+import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, triggerPuterSignIn, hasPuterToken, AuditResult, GenerateResult } from "@/lib/puterAI";
+
+async function getTokenForRefinement(): Promise<string | null> {
+  const customPuterToken = localStorage.getItem("algocheat.puter_token");
+  if (customPuterToken && customPuterToken.trim()) return customPuterToken.trim();
+  return localStorage.getItem("puter.auth.token.v2");
+}
 import { ContentType, RUBRICS } from "@/lib/auditRubrics";
 import { useToast } from "@/hooks/use-toast";
 import { useRAG } from "@/hooks/useRAG";
@@ -129,23 +135,39 @@ CRITICAL INSTRUCTIONS:
 7. Do NOT output any markdown fences (like \`\`\`), labels, notes, or commentary.
 8. Return ONLY the plain text of the final revised post, starting directly with the first line of the post.`;
 
-      const resp = await (window as any).puter.ai.chat(prompt, { model: "gpt-4o-mini" });
-      const text = typeof resp === "string" ? resp : resp?.message?.content ?? resp?.text ?? JSON.stringify(resp);
+      const customKey = localStorage.getItem("algocheat.openai_key");
+      const token = await getTokenForRefinement();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      let response;
+      if (customKey && customKey.trim().startsWith("sk-")) {
+        response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${customKey.trim()}` },
+          body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
+        });
+      } else {
+        response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
+        });
+      }
+
+      if (!response.ok) {
+        if (response.status === 402) throw new Error("insufficient_funds");
+        throw new Error(`API Error ${response.status}`);
+      }
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content || "";
       setRefined(sanitize(text));
     } catch (e: any) {
-      if (e?.message?.includes("insufficient_funds") || e?.status === 402 || e?.message?.includes("402")) {
-        if ((window as any).showPuterAuthDialog) {
-          (window as any).showPuterAuthDialog("exhausted", refine);
-        }
-      } else if (isAuthError(e)) {
-        if ((window as any).showPuterAuthDialog) {
-          (window as any).showPuterAuthDialog("welcome", refine);
-        }
+      if (e?.message?.includes("insufficient_funds") || e?.status === 402) {
+        toast({ variant: "destructive", description: "Free AI credits exhausted. Configure your own API key in the gear icon settings." });
       } else {
-        toast({
-          variant: "destructive",
-          description: e?.message ?? "Refinement failed",
-        });
+        toast({ variant: "destructive", description: e?.message ?? "Refinement failed" });
       }
     } finally {
       setLoading(false);
@@ -383,12 +405,21 @@ function TopicGenerator({ type, onUseGeneratedContent }: TopicGeneratorProps) {
   return (
     <Card className="p-6 bg-gradient-to-br from-primary/5 to-secondary/5 space-y-4">
       <div>
-        <h3 className="text-xl font-semibold flex items-center gap-2">
-          <Zap className="w-5 h-5 text-primary" /> Do you have a topic in mind? Or what do you want to write today?
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Drop a topic, niche, or angle and get an instant {RUBRICS[type].label.toLowerCase()} that you can push to the audit tool.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <Zap className="w-5 h-5 text-primary" /> Do you have a topic in mind? Or what do you want to write today?
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Drop a topic, niche, or angle and get an instant {RUBRICS[type].label.toLowerCase()} that you can push to the audit tool.
+            </p>
+          </div>
+          {state !== "idle" && (
+            <Button variant="ghost" size="sm" onClick={reset} className="text-xs shrink-0 text-muted-foreground hover:text-foreground">
+              Reset Today
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* STATE: idle or loading */}
