@@ -609,4 +609,5 @@ Return ONLY valid JSON (no markdown wrapping) in this exact shape:
     "overrideApplied": <true | false>,
     "overrideReasoning": "<description>"
   }
+}`;
 }
