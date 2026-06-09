@@ -65,7 +65,7 @@ async function getAuthToken(): Promise<string | null> {
   }
 
   if (!puter) {
-    throw new Error("Puter.js failed to load. Please check your internet connection.");
+    return null;
   }
 
   // 3. Check if we already have a token
@@ -253,6 +253,26 @@ CRITICAL: Return ONLY valid JSON in this exact shape. No markdown fences, no lab
   }
 
   if (!response.ok) {
+    // Retry without token (guest access may work even without Puter.js loaded)
+    if (token) {
+      const guestResp = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.2,
+        }),
+      });
+      if (guestResp.ok) {
+        const guestData = await guestResp.json();
+        const guestText = extractText(guestData);
+        return parseJSON(guestText);
+      }
+      if (guestResp.status === 402) {
+        throw new Error("insufficient_funds");
+      }
+    }
     const errText = await response.text();
     throw new Error(`Puter AI Error ${response.status}: ${errText}`);
   }

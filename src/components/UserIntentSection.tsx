@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -121,6 +121,30 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
     setSelected(id)
   }
 
+  const handlePrint = useCallback(() => {
+    const style = document.createElement("style")
+    style.id = "algocheat-print-css"
+    style.textContent = `
+      @media print {
+        body > *:not(:has(#playbook-section)) { display: none !important; }
+        body :has(#playbook-section) { display: block !important; }
+        #playbook-section { padding: 20px 40px !important; }
+        #playbook-section .card { break-inside: avoid !important; border: 1px solid #ddd !important; box-shadow: none !important; }
+        #playbook-section button { display: none !important; }
+        #playbook-section h3 { font-size: 24px !important; margin-bottom: 8px !important; }
+        #playbook-section p { font-size: 14px !important; margin-bottom: 24px !important; }
+      }
+    `
+    document.head.appendChild(style)
+    setTimeout(() => {
+      window.print()
+      setTimeout(() => {
+        const el = document.getElementById("algocheat-print-css")
+        if (el) el.remove()
+      }, 500)
+    }, 100)
+  }, [])
+
   async function handleGenerate() {
     if (!selected) return
     const intent = intents.find((i) => i.id === selected)
@@ -214,7 +238,7 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
         </div>
 
         {playbook && (
-          <div className="mt-16">
+          <div id="playbook-section" className="mt-16">
             <div className="text-center mb-10">
               <h3 className="font-display text-2xl md:text-3xl font-bold mb-2">
                 Your <span className="text-gradient-mint">6-Page Playbook</span>
@@ -254,10 +278,10 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
               <Button
                 variant="outline"
                 size="lg"
-                onClick={() => window.print()}
+                onClick={handlePrint}
                 className="h-12 px-8 text-base"
               >
-                Download as PDF
+                🖨️ Download as PDF
               </Button>
             </div>
           </div>
