@@ -10,7 +10,6 @@ const features = [
     title: "2026 Algorithm Audit",
     body: "10 strict parameters: hook strength, dwell-time architecture, value density, comment-bait risk, format match, and 5 more.",
     image: algo,
-    span: "md:col-span-2 md:row-span-2",
   },
   {
     icon: Sparkles,
@@ -43,38 +42,37 @@ const features = [
 
 export function FeatureBento() {
   return (
-    <section id="features" className="py-20 md:py-28 bg-card/20 border-y border-border/40">
-      <div className="container">
-        <div className="max-w-2xl mx-auto text-center mb-14">
-          <p className="text-sm font-medium text-primary uppercase tracking-widest mb-3">Capabilities</p>
-          <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
-            Everything a content team gives you. <br />
-            <span className="text-gradient-mint">Built for one operator.</span>
+    <section id="features" className="py-12 bg-card/20 border-y border-border/40">
+      <div className="container space-y-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-2">Capabilities</p>
+          <h2 className="font-display text-2xl md:text-3xl font-bold">
+            Everything a content team gives you. <span className="text-gradient-mint">Built for one operator.</span>
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 auto-rows-[180px] gap-4 max-w-6xl mx-auto">
+        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory px-4 max-w-6xl mx-auto">
           {features.map((f) => {
             const Icon = f.icon;
             return (
               <Card
                 key={f.title}
-                className={`relative overflow-hidden p-6 bg-gradient-to-br from-card to-card/40 border-border/60 hover:border-primary/40 transition-all group ${
-                  f.span ?? "md:col-span-2"
-                }`}
+                className="snap-center shrink-0 w-[280px] sm:w-[320px] min-h-[220px] relative overflow-hidden p-6 bg-gradient-to-br from-card to-card/40 border-border/60 hover:border-primary/40 transition-all group flex flex-col justify-between"
               >
                 {f.image && (
                   <div
-                    className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity bg-cover bg-center"
+                    className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity bg-cover bg-center"
                     style={{ backgroundImage: `url(${f.image})` }}
                   />
                 )}
-                <div className="relative z-10 h-full flex flex-col">
-                  <div className="w-10 h-10 rounded-lg bg-primary/15 grid place-items-center text-primary mb-4">
+                <div className="relative z-10 space-y-4">
+                  <div className="w-10 h-10 rounded-lg bg-primary/15 grid place-items-center text-primary">
                     <Icon className="w-5 h-5" />
                   </div>
-                  <h3 className="font-display text-xl font-semibold mb-2">{f.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{f.body}</p>
+                  <div>
+                    <h3 className="font-display text-lg font-semibold mb-2">{f.title}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{f.body}</p>
+                  </div>
                 </div>
               </Card>
             );

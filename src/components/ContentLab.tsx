@@ -921,43 +921,20 @@ function KnowledgeBasePanel() {
 }
 
 export function ContentLab() {
-  const [dialogMode, setDialogMode] = useState<"welcome" | "exhausted" | null>(null);
-  const [onSuccessCallback, setOnSuccessCallback] = useState<{ run: () => void } | null>(null);
-  const [authLoading, setAuthLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    (window as any).showPuterAuthDialog = (mode: "welcome" | "exhausted", callback: () => void) => {
-      setDialogMode(mode);
-      setOnSuccessCallback({ run: callback });
+    const handleFallback = (e: any) => {
+      toast({
+        title: "Puter AI Busy / Limit Reached",
+        description: e.detail?.message || "Switching to backup API...",
+      });
     };
+    window.addEventListener("puter-fallback-active", handleFallback);
     return () => {
-      delete (window as any).showPuterAuthDialog;
+      window.removeEventListener("puter-fallback-active", handleFallback);
     };
-  }, []);
-
-  const handlePuterLogin = async () => {
-    setAuthLoading(true);
-    try {
-      await triggerPuterSignIn({ attemptTempUser: dialogMode === "welcome" });
-      toast({
-        description: dialogMode === "welcome"
-          ? "Free guest credits activated successfully!"
-          : "Signed in successfully! Your Puter credits are refreshed.",
-      });
-      setDialogMode(null);
-      if (onSuccessCallback) {
-        onSuccessCallback.run();
-      }
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        description: err.message || "Failed to authenticate. Please try again.",
-      });
-    } finally {
-      setAuthLoading(false);
-    }
-  };
+  }, [toast]);
 
   return (
     <section id="content-lab" className="mb-16 scroll-mt-20 relative">
@@ -997,89 +974,6 @@ export function ContentLab() {
         <TabsContent value="article"><AuditPanel type="article" /></TabsContent>
         <TabsContent value="kb"><KnowledgeBasePanel /></TabsContent>
       </Tabs>
-
-      {/* Puter Auth Modal Overlay (100% Popup-Proof) */}
-      {dialogMode && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <Card className="relative w-full max-w-md border border-primary/20 bg-card/95 shadow-2xl p-6 space-y-6">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-4 top-4 h-8 w-8 hover:bg-muted"
-              onClick={() => setDialogMode(null)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-
-            <div className="text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto text-primary text-xl">
-                {dialogMode === "welcome" ? "⚡" : "🔑"}
-              </div>
-              <h3 className="text-xl font-bold tracking-tight">
-                {dialogMode === "welcome" ? "Activate Free AI Credits" : "Credits limit reached"}
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {dialogMode === "welcome"
-                  ? "AlgoCheat AI is powered by Puter's privacy-first keyless AI engine. To run organic audits and generate posts, initialize your free guest credits session below."
-                  : "Your temporary guest credits are exhausted. Puter provides unlimited free credits if you log in or register a free Puter account. Click below to refresh them instantly."}
-              </p>
-              {/mobile|ipad|iphone|android/i.test(navigator.userAgent) && (
-                <div className="text-[11px] text-yellow-400 bg-yellow-500/10 border border-yellow-500/25 p-3 rounded-lg leading-relaxed text-left flex gap-2">
-                  <span className="text-sm shrink-0">⚠️</span>
-                  <span>
-                    <strong>Mobile Browser Policy:</strong> Mobile browsers block cross-origin popup sign-ins. If the login popup gets stuck, close it and click the link below to enter your custom API key.
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2.5 pt-2">
-              <Button
-                onClick={handlePuterLogin}
-                disabled={authLoading}
-                className="w-full bg-gradient-to-r from-primary to-purple-600 text-white font-medium hover:opacity-95 shadow-lg shadow-primary/20"
-              >
-                {authLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Connecting to Puter...
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4 mr-2" />
-                    {dialogMode === "welcome" ? "Activate Free Guest AI" : "Sign In / Sign Up (Free)"}
-                  </>
-                )}
-              </Button>
-              
-              <Button
-                variant="link"
-                className="text-[11px] text-primary hover:underline h-auto p-0 mt-0.5"
-                onClick={() => {
-                  setDialogMode(null);
-                  window.dispatchEvent(new CustomEvent("open-api-settings"));
-                }}
-                disabled={authLoading}
-              >
-                Or enter custom API Key (popup-free fallback)
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full mt-1"
-                onClick={() => setDialogMode(null)}
-                disabled={authLoading}
-              >
-                Cancel
-              </Button>
-            </div>
-
-            <p className="text-[10px] text-center text-muted-foreground/60 leading-normal">
-              By continuing, you activate Puter's client-side privacy sandbox. No email, credit card, or setup required.
-            </p>
-          </Card>
-        </div>
-      )}
     </section>
   );
 }

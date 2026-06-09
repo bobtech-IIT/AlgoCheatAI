@@ -81,94 +81,11 @@ async function getAuthToken(): Promise<string | null> {
 }
 
 /**
- * Triggers Puter authentication. Call only from click handlers to bypass popup blockers.
+ * Triggers Puter authentication. Simplified to bypass popups and run 100% login-free.
  */
 export async function triggerPuterSignIn(options?: { attemptTempUser?: boolean }): Promise<string> {
-  if (typeof window === "undefined") return "no-token-available";
-  
-  let puter = (window as any).puter;
-  if (!puter) {
-    for (let attempt = 0; attempt < 10 && !puter; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      puter = (window as any).puter;
-    }
-  }
-
-  if (!puter) {
-    throw new Error("Puter.js failed to load. Please check your network.");
-  }
-
-  // Check if we already have a custom Puter token
-  const customToken = localStorage.getItem("algocheat.puter_token");
-  if (customToken && customToken.trim().length > 0) {
-    if (puter) puter.authToken = customToken.trim();
-    return customToken.trim();
-  }
-
-  return new Promise<string>((resolve, reject) => {
-    let settled = false;
-    let interval: any = null;
-
-    const onSuccess = (token: string) => {
-      if (settled) return;
-      settled = true;
-      if (interval) clearInterval(interval);
-      window.removeEventListener("storage", storageHandler);
-      if (puter && token && token !== "no-token-available") {
-        puter.authToken = token;
-      }
-      resolve(token);
-    };
-
-    const onFailure = (err: any) => {
-      console.warn("Puter sign-in attempt warning/error:", err);
-    };
-
-    // 1. Storage event listener (fires when other tabs/popups write to localStorage on same origin)
-    const storageHandler = (e: StorageEvent) => {
-      if (e.key === "puter.auth.token.v2" && e.newValue && e.newValue !== "no-token-available") {
-        onSuccess(e.newValue);
-      }
-    };
-    window.addEventListener("storage", storageHandler);
-
-    // 2. Fast polling fallback (every 500ms for 2 minutes)
-    let count = 0;
-    interval = setInterval(() => {
-      const tok = puter?.authToken || localStorage.getItem("puter.auth.token.v2");
-      if (tok && tok !== "no-token-available") {
-        onSuccess(tok);
-      } else if (++count > 240) { // 2 minutes timeout
-        if (!settled) {
-          settled = true;
-          clearInterval(interval);
-          window.removeEventListener("storage", storageHandler);
-          reject(new Error("Authentication timed out. Please try again."));
-        }
-      }
-    }, 500);
-
-    // 3. Trigger Puter standard sign-in (use option flag if we want guest activation)
-    puter.auth.signIn(options?.attemptTempUser ? { attempt_temp_user_creation: true } : {})
-      .then((res: any) => {
-        const tok = res?.token || puter.authToken || localStorage.getItem("puter.auth.token.v2");
-        if (tok && tok !== "no-token-available") {
-          onSuccess(tok);
-        }
-      })
-      .catch((err: any) => {
-        onFailure(err);
-        // If the popup was blocked, reject immediately so the user is prompted to enable popups
-        if (err?.error === "popup_blocked") {
-          if (!settled) {
-            settled = true;
-            clearInterval(interval);
-            window.removeEventListener("storage", storageHandler);
-            reject(new Error("The sign-in popup was blocked by your browser. Please allow popups for this site."));
-          }
-        }
-      });
-  });
+  const token = await getAuthToken();
+  return token || "";
 }
 
 /**
@@ -305,19 +222,36 @@ async function callClientSidePuterAI(action: string, payload: any): Promise<any>
     }
   }
 
-  // 2. Check if user configured a custom Puter Token
-  const customPuterToken = typeof window !== "undefined" ? localStorage.getItem("algocheat.puter_token") : null;
-  const puter = (window as any).puter;
-  if (!puter) {
-    throw new Error("Puter.js is not loaded. Please check your connection.");
+  // 2. Direct REST fetch bypasses Puter SDK "Low Balance" automatic popups.
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
-  if (customPuterToken && customPuterToken.trim().length > 0) {
-    puter.authToken = customPuterToken.trim();
+  const response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+    }),
+  });
+
+  if (response.status === 402) {
+    throw new Error("insufficient_funds");
   }
 
-  const resp = await puter.ai.chat(prompt, { model: "gpt-4o-mini" });
-  const text = extractText(resp);
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Puter AI Error ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  const text = extractText(data);
   return parseJSON(text);
 }
 
@@ -373,32 +307,86 @@ async function callAPI<T>(endpoint: string, payload: any): Promise<T> {
  * If the backend call fails for any reason (e.g. rate limit, expired/invalid key, network issue),
  * it automatically catches the error and falls back to client-side Puter AI execution.
  */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, rejectReason: string): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(rejectReason)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
+}
+
 async function callWithFallback<T>(action: string, payload: any, endpoint: string): Promise<T> {
   // Check if we have local custom credentials.
   const customOpenAIKey = typeof window !== "undefined" ? localStorage.getItem("algocheat.openai_key") : null;
   const customPuterToken = typeof window !== "undefined" ? localStorage.getItem("algocheat.puter_token") : null;
   const customApiUrl = typeof window !== "undefined" ? localStorage.getItem("algocheat.api_url") : null;
 
-  // Only run client-side direct calls if:
-  // 1. We are using a Puter Developer Token, OR
-  // 2. We are using a custom OpenAI key starting with "sk-" AND no custom API URL override is specified.
-  const canRunClientSide = (customPuterToken && customPuterToken.trim().length > 0) ||
-    (customOpenAIKey && customOpenAIKey.trim().startsWith("sk-") && (!customApiUrl || !customApiUrl.trim()));
+  // Custom key/token routes directly to client-side Puter or OpenAI without session limits
+  const hasCustomAuth = (customPuterToken && customPuterToken.trim().length > 0) ||
+    (customOpenAIKey && customOpenAIKey.trim().startsWith("sk-"));
 
-  if (canRunClientSide) {
+  if (hasCustomAuth) {
     return callClientSidePuterAI(action, payload);
   }
 
-  const config = await checkBackendConfig();
-  if (config.hasOpenAIKey) {
-    try {
-      return await callAPI<T>(endpoint, payload);
-    } catch (err) {
-      console.warn(`Backend call to ${endpoint} failed, falling back to client-side Puter AI:`, err);
-      return callClientSidePuterAI(action, payload);
+  const isCustomAPIKeyActive = !!(customOpenAIKey && customOpenAIKey.trim());
+  const checkSessionLimit = () => {
+    if (!isCustomAPIKeyActive) {
+      const currentUsageRaw = sessionStorage.getItem("algocheat.backend_api_usage");
+      const currentUsage = currentUsageRaw ? parseInt(currentUsageRaw, 10) : 0;
+      if (currentUsage >= 5) {
+        throw new Error("Strict backup API limit reached (5 requests/session). Please configure your own API key in the settings (Gear icon) to continue.");
+      }
     }
-  } else {
-    return callClientSidePuterAI(action, payload);
+  };
+
+  const incrementSessionLimit = () => {
+    if (!isCustomAPIKeyActive) {
+      const currentUsageRaw = sessionStorage.getItem("algocheat.backend_api_usage");
+      const currentUsage = currentUsageRaw ? parseInt(currentUsageRaw, 10) : 0;
+      sessionStorage.setItem("algocheat.backend_api_usage", (currentUsage + 1).toString());
+    }
+  };
+
+  // Plan A: Try client-side Puter AI (Direct fetch, keyless/guest) with 8-second timeout
+  try {
+    const result = await withTimeout(
+      callClientSidePuterAI(action, payload),
+      8000,
+      "timeout"
+    );
+    return result;
+  } catch (err: any) {
+    console.warn(`Puter AI client call failed (${err.message}). Checking Plan B backup fallback...`);
+
+    const config = await checkBackendConfig();
+    const hasBackupKey = config.hasOpenAIKey || isCustomAPIKeyActive;
+
+    if (hasBackupKey) {
+      // Enforce sessionStorage limits to protect developer key costs
+      checkSessionLimit();
+
+      // Trigger custom UI event so ContentLab shows the warning toast
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("puter-fallback-active", {
+            detail: { message: "Puter AI busy or limits reached. Routing request to backup API..." }
+          })
+        );
+      }
+
+      // Wait 1.5 seconds so user has time to see the toast notification
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      const apiResult = await callAPI<T>(endpoint, payload);
+      incrementSessionLimit();
+      return apiResult;
+    } else {
+      if (err.message === "timeout") {
+        throw new Error("Puter AI timed out. Please configure your own API key in the settings (Gear icon) to continue.");
+      }
+      throw err;
+    }
   }
 }
 
