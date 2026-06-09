@@ -12,6 +12,12 @@ import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, get
 async function getTokenForRefinement(): Promise<string | null> {
   const customPuterToken = localStorage.getItem("algocheat.puter_token");
   if (customPuterToken && customPuterToken.trim()) return customPuterToken.trim();
+  let puter = (window as any).puter;
+  for (let attempt = 0; attempt < 15 && !puter; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    puter = (window as any).puter;
+  }
+  if (puter?.authToken) return puter.authToken;
   return localStorage.getItem("puter.auth.token.v2");
 }
 import { ContentType, RUBRICS } from "@/lib/auditRubrics";
@@ -136,32 +142,45 @@ CRITICAL INSTRUCTIONS:
 8. Return ONLY the plain text of the final revised post, starting directly with the first line of the post.`;
 
       const customKey = localStorage.getItem("algocheat.openai_key");
-      const token = await getTokenForRefinement();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      let text = "";
 
-      let response;
       if (customKey && customKey.trim().startsWith("sk-")) {
-        response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const resp = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${customKey.trim()}` },
           body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
         });
+        if (!resp.ok) throw new Error(`API Error ${resp.status}`);
+        const data = await resp.json();
+        text = data.choices?.[0]?.message?.content || "";
       } else {
-        response = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
-        });
+        const token = await getTokenForRefinement();
+        let resp: Response | null = null;
+
+        if (token) {
+          resp = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+            body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
+          });
+        }
+
+        if (!resp || !resp.ok) {
+          resp = await fetch("https://api.puter.com/puterai/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0.2 }),
+          });
+        }
+
+        if (!resp.ok) {
+          throw new Error("AI service busy. Configure your own API key in Settings (gear icon) to continue.");
+        }
+
+        const data = await resp.json();
+        text = data.choices?.[0]?.message?.content || "";
       }
 
-      if (!response.ok) {
-        if (response.status === 402) throw new Error("insufficient_funds");
-        throw new Error(`API Error ${response.status}`);
-      }
-
-      const data = await response.json();
-      const text = data.choices?.[0]?.message?.content || "";
       setRefined(sanitize(text));
     } catch (e: any) {
       if (e?.message?.includes("insufficient_funds") || e?.status === 402) {
