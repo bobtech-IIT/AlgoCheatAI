@@ -316,59 +316,106 @@ Return ONLY valid JSON in this exact shape:
 }`;
 }
 
-export function buildAuditPrompt(type: ContentType, content: string, imageDescription?: string): string {
-  const r = RUBRICS[type];
-  const paramList = r.params.map((p, i) => `${i + 1}. ${p.key} - ${p.name}: ${p.description}`).join("\n");
+export function buildAuditPrompt(
+  type: ContentType,
+  content: string,
+  imageDescription?: string,
+  performance?: { impressions?: number; reactions?: number; comments?: number; reposts?: number }
+): string {
   const visual = type === "image" && imageDescription ? `\n\nIMAGE DESCRIPTION:\n${imageDescription}` : "";
-  return `You are a strict LinkedIn 2026 algorithm auditor AND a voice-preservation expert. Score the user's ${r.label} against EXACTLY these 10 parameters:
+  const performanceContext = performance ? `\n\nACTUAL PERFORMANCE DATA:\n- Impressions: ${performance.impressions ?? "unknown"}\n- Reactions: ${performance.reactions ?? "unknown"}\n- Comments: ${performance.comments ?? "unknown"}\n- Reposts: ${performance.reposts ?? "unknown"}` : "";
 
-${paramList}
+  return `You are a senior LinkedIn content strategist and performance analyst. You audit LinkedIn posts with precision, honesty, and zero flattery. Your job is not to encourage — it is to diagnose. Every score you give must be defensible against real-world performance data, not just copywriting theory. You never conflate writing quality with post performance.
 
-ALGORITHM RULES (2026):
-${r.rules}
-
-CRITICAL AUDITING RULE (Strict Reality-Check):
-- **No Hallucination on Missing Elements**: You must evaluate the user's content EXACTLY as it is written. If the user's draft is extremely short or entirely lacks specific elements (such as having 0 hashtags, no bullet lists, no outbound links, or no questions), you MUST NOT invent, hallucinate, or fabricate that these elements exist in the original text to justify a score. 
-  - If hashtags are missing, write: "Issue: The post contains 0 hashtags." and "Fix: Add 3-5 niche hashtags at the bottom." Do NOT claim the original post had "12+ tags".
-  - If bullets/lists are missing, write: "Issue: The draft lacks scannable formatting or lists." and "Fix: Break up dense paragraphs and use lists for key metrics." Do NOT claim the original post "already has bullets".
-  - If a question is missing, write: "Issue: Lacks an open-ended conversation trigger." and "Fix: Append a targeted, open-ended question before the hashtags." Do NOT claim the original post "has a weak question".
-
-USER CONTENT:
+USER CONTENT TO AUDIT:
 """
 ${content}
-"""${visual}
+"""${visual}${performanceContext}
 
-VOICE FINGERPRINT INSTRUCTION (critical):
-Before scoring or rewriting, silently analyze and internalize the author's unique voice fingerprint from the content above. Identify:
-1. Tone register: Is it formal, casual, punchy, dry, passionate, authoritative?
-2. Sentence rhythm: Short and punchy? Long and flowing? Mixed? Do they use fragments?
-3. Punctuation style: Heavy use of ellipsis (...), em-dashes (--), exclamation marks, minimal punctuation?
-4. Vocabulary & register: Corporate jargon, plain English, technical, colloquial, mixed?
-5. Structural signature: Lists? Rhetorical questions? Numbered frameworks? Story-first? Data-first?
+STEP 1: DETECT POST FORMAT
+Classify the content into exactly one of these formats:
+- TEXT_ONLY
+- IMAGE_SINGLE
+- IMAGE_MULTI (2-9 images)
+- CAROUSEL_DOC (PDF/document post)
+- VIDEO
+- POLL
+- TEXT + LINK_PREVIEW
 
-REWRITE RULES (non-negotiable & extremely strict):
-- **EXECUTE EVERY AUDIT FIX**: The \`rewritten\` field is your core deliverable. You MUST read the specific \`fix\` action you defined for each parameter under the \`scores\` array and implement it directly in the \`rewritten\` content.
-  - If a parameter's score is < 10, you MUST rewrite that aspect of the post to apply the fix. For example:
-    - **Hook Strength**: If hook score is < 10, you MUST rewrite the opener to add a direct, time-bound benefit within the first two lines. Do NOT keep the original opener verbatim.
-    - **Authentic Voice**: Inject a concrete, first-person moment ("I", "my team") or attribution that ties to personal, hands-on experience.
-    - **Value Density**: Inject concrete, realistic metrics, numbers, or outcomes (e.g., "saved 40% in cost", "shrunk timeline from 6 months to 4 weeks") to back up any qualitative claims. If none are present, invent contextually appropriate mockup metrics.
-    - **Narrative Arc**: Open with a brief contrarian moment, pattern interrupt, or micro-story.
-    - **Conversation Trigger**: You MUST append the targeted, open-ended question you suggested (e.g., 'Which pillar would unlock your time-to-live in 90 days?') at the very end of the post text (before hashtags).
-    - **Hashtag Discipline**: Hard-limit the final hashtags in the rewritten text to exactly 3 to 5 highly relevant niche tags (drop all others).
-    - **LinkedIn SEO**: Seamlessly weave in the long-tail SEO keywords you recommended in the audit.
-- **Seamless Hook & Title Integration (No Double Hooks)**: When injecting a rewritten hook to fix a low hook score, do NOT clumsily stack the new hook directly on top of the original title or header (e.g., leaving both "Stop the clock..." and "The Story of 'So Addicted'" side-by-side). You must merge them into a single, cohesive, scroll-stopping opener, or completely replace the old title if it dilutes the scroll-stopping velocity.
-- **Preserve Metaphorical Distinctions (No Metaphor Collapse/Leakage)**: Keep analogies and business outcomes completely separated. Do NOT convert third-person analogies into literal first-person statements (e.g. changing "golfers study the course" to "I study the course" when describing the golfer's actions). Keep the analogy purely in the third person, complete it, and then transition to the business application in a separate paragraph. Do NOT inject business outcomes or corporate actions (e.g., "my team cut lead times by 40%") directly inside list items or sentences describing the analogy (e.g. what golfers do).
-- **Preserve Spacing & Line Breaks**: Do NOT flatten the text into a giant block of paragraph. Keep the line breaks, spacing, and short lines. Keep 1-2 sentence paragraphs max.
-- **Clean Hashtag Glitches**: If the user's post contains "hashtag#Word", convert them to standard clean hashtags (e.g. "#Word"). Do not leave the word "hashtag#" in the text.
-- **Preserve Original Style & Rhythm**: The rewrite must sound like the SAME AUTHOR wrote it after a careful second edit — not a different writer. Keep their general tone and structure but polish out all weaknesses.
-- **Clean Markdown Formatting**: Do NOT output markdown bold or italic formatting (like double asterisks '**' or single asterisks '*'). Convert bold text to plain text or UPPERCASE.
+STEP 2: SELECT WEIGHT TABLE BASED ON DETECTED FORMAT
+Use the exact weight table below for calculations:
+- TEXT_ONLY: Hook Strength (0.15), Dwell-Time Structure (0.14), Authentic Voice (0.12), Value Density (0.13), Narrative Arc (0.12), Conversation Trigger (0.11), Hashtag Discipline (0.07), LinkedIn SEO (0.07), Penalty Avoidance (0.05), Saveability / Shareability (0.04)
+- IMAGE_SINGLE / IMAGE_MULTI: Hook Strength (0.07), Dwell-Time Structure (0.07), Authentic Voice (0.14), Value Density (0.10), Narrative Arc (0.08), Conversation Trigger (0.15), Hashtag Discipline (0.10), LinkedIn SEO (0.08), Penalty Avoidance (0.09), Saveability / Shareability (0.12)
+- CAROUSEL_DOC: Hook Strength (0.13), Dwell-Time Structure (0.16), Authentic Voice (0.10), Value Density (0.16), Narrative Arc (0.13), Conversation Trigger (0.10), Hashtag Discipline (0.06), LinkedIn SEO (0.06), Penalty Avoidance (0.05), Saveability / Shareability (0.05)
+- VIDEO: Hook Strength (0.16), Dwell-Time Structure (0.15), Authentic Voice (0.15), Value Density (0.12), Narrative Arc (0.12), Conversation Trigger (0.10), Hashtag Discipline (0.06), LinkedIn SEO (0.05), Penalty Avoidance (0.05), Saveability / Shareability (0.04)
+- TEXT + LINK_PREVIEW: Hook Strength (0.13), Dwell-Time Structure (0.10), Authentic Voice (0.12), Value Density (0.11), Narrative Arc (0.10), Conversation Trigger (0.12), Hashtag Discipline (0.08), LinkedIn SEO (0.07), Penalty Avoidance (0.12), Saveability / Shareability (0.05)
 
-Return ONLY valid JSON (no markdown, no prose) in this exact shape:
+STEP 3: EVALUATE & SCORE EACH PARAMETER (1-10) USING STRICT RUBRICS
+Evaluate and assign a raw score of 1 to 10 for each parameter. Do not interpret loosely:
+1. Hook Strength:
+   - For TEXT_ONLY: Score the first line. 9-10 (Specific, surprising, or counterintuitive claim; creates immediate tension or curiosity); 7-8 (Clear position/declarative statement; earns read); 5-6 (Functional opener, informative but not compelling); 3-4 (Rhetorical question, "Have you noticed...", "What if I told you...", "Hot take:"); 1-2 (Filler: "I wanted to share...", "Today I'm excited to...", "Thoughts on:").
+   - For IMAGE-LED formats: Score visual + first line combined. 9-10 (Visual arresting AND first line adds context/tension); 7-8 (Visual strong, first line functional); 5-6 (Average visual); 3-4 (Weak/stock visual); 1-2 (No visual or text stops scroll).
+   - CRITICAL: If format is image-led but visual is UNKNOWN, withhold hook score (assign 1) and flag as PENDING.
+2. Dwell-Time Structure:
+   - 9-10 (Deliberate rhythm, alternating short/punchy lines, progressive information release); 7-8 (Clear readable structure, no wall-of-text); 5-6 (Readable but flat); 3-4 (Dense blocks, no line breaks); 1-2 (Unreadable).
+   - For CAROUSEL_DOC: Score slide architecture (cover -> body -> CTA), not caption rhythm.
+3. Authentic Voice:
+   - 9-10 (Unmistakably personal, specific details/opinions/experiences, clear editorial stance); 7-8 (Has POV, consistent voice); 5-6 ("I found this interesting" but passive); 3-4 (No personal voice, press release style); 1-2 (AI-generated/ghostwritten clichés).
+   - Watch for: "As someone who has seen firsthand..." with no proof = max 4. "I found X interesting" with no opinion = max 5.
+4. Value Density:
+   - 9-10 (Original insight backed by specific evidence/named mechanism/reframe, highly quotable); 7-8 (One sharp useful idea); 5-6 (Correct but generic); 3-4 (All observation, no insight); 1-2 (Vague buzzwords).
+   - TEST: Can you extract one sentence and share it as a standalone insight? If yes, score 7+. If not, score below 6.
+5. Narrative Arc:
+   - 9-10 (Full arc: setup tension -> middle evidence -> resolution/reframe/question); 7-8 (Logical progression from A to B); 5-6 (Thin/repetitive middle); 3-4 (Observation stacked on observation, no arc); 1-2 (No structure, rambling).
+6. Conversation Trigger:
+   - 9-10 (Specific, arguable, slightly provocative question referencing a named category/entity); 7-8 (Clear question inviting experiences); 5-6 (Too broad: "What do you think?"); 3-4 (Implied invitation, hints at agreement); 1-2 (No trigger).
+   - CRITICAL RULE: Absent CTA/Conversation Trigger = HARD CAP OF 2/10 for this parameter.
+7. Hashtag Discipline:
+   - 9-10 (3-5 hashtags; mix of 1 high-volume topic, 1-2 mid-volume niche, optional 1 brand tag); 7-8 (3-5 tags, minor misfire); 5-6 (Too generic/too niche); 3-4 (Too many (6+) or too few (0-1)); 1-2 (Random stuffing).
+   - COMPETITOR TAGGING: If competitor brand tagged without contrast framing, apply -1.5 penalty to the final Hashtag/Penalty score.
+8. LinkedIn SEO:
+   - 9-10 (2-3 primary keywords in first 2 lines and reinforced in hashtags); 7-8 (Keywords present in body but not opening); 5-6 (Keywords buried); 3-4 (Keywords only in hashtags); 1-2 (No strategy).
+9. Penalty Avoidance:
+   - Deduct from base of 10. Check each item:
+     - External link in post body: -2
+     - More than 5 hashtags: -1
+     - Excessive random tagging (3+ people): -2
+     - Competitor tagging without context: -1.5
+     - Engagement bait ("Like if agree", "Tag someone"): -2
+     - Copied/reposted content without attribution: -2
+     - Overly promotional language ("Buy now", "Sign up"): -1.5
+     - All-caps usage (beyond one word): -0.5
+     - Minimum parameter score is 1.
+10. Saveability / Shareability:
+    - 9-10 (Named framework, original data point, quote sharp enough to screenshot); 7-8 (Memorable line/insight); 5-6 (Mildly interesting); 3-4 (No quotable/framework/data); 1-2 (Nothing reusable).
+
+STEP 4: PERFORMANCE CALIBRATION (IF PERFORMANCE DATA PROVIDED)
+If actual performance data is provided:
+1. Calculate engagement rate: (Reactions + Comments + Reposts) / Impressions * 100
+2. Map to benchmarks: <1% (Below Average), 1%-2% (Average), 2%-5% (Above Average), 5%+ (High Performing).
+3. If audit score < 6.0 but performance is Above Average or High Performing: Flag FORMAT/CONTEXT OVERRIDE, adjust scores upward, and explain why.
+4. If audit score > 7.0 but performance is Below Average: Flag DISTRIBUTION PROBLEM (low reach account, timing, shadowban) but do not lower content score.
+
+STEP 5: REWRITE RULES
+Deliver a voice-preserved 10/10 rewrite in the 'rewritten' field. Implement all fixes defined for parameters scoring < 10. Preserve style, rhythm, and spacing. Do not output markdown asterisks for bolding.
+
+STEP 6: REPORT GENERATION
+Return ONLY valid JSON (no markdown wrapping) in this exact shape:
 {
-  "overall": <0-100 integer representing the final percentage score. Compute by taking average of 10 parameters each out of 10, multiply by 10>,
+  "overall": <0-100 integer percentage representing the final weighted score: (Sum of (raw_score * weight) for all 10 parameters) * 10, rounded>,
+  "detectedFormat": "<TEXT_ONLY | IMAGE_SINGLE | IMAGE_MULTI | CAROUSEL_DOC | VIDEO | POLL | TEXT_LINK_PREVIEW>",
   "verdict": "<one sentence verdict>",
   "scores": [
-    { "key": "<param key>", "name": "<param name>", "score": <0-10 integer>, "issue": "<what is wrong>", "fix": "<specific fix>" }
+    { "key": "hook", "name": "Hook Strength", "score": <raw 1-10>, "weight": <weight>, "weightedScore": <weighted score>, "issue": "<what is wrong>", "fix": "<specific fix>" },
+    { "key": "dwell", "name": "Dwell-Time Structure", "score": <raw 1-10>, "weight": <weight>, "weightedScore": <weighted score>, "issue": "<what is wrong>", "fix": "<specific fix>" },
+    { "key": "voice", "name": "Authentic Voice", "score": <raw 1-10>, "weight": <weight>, "weightedScore": <weighted score>, "issue": "<what is wrong>", "fix": "<specific fix>" },
+    { "key": "value", "name": "Value Density", "score": <raw 1-10>, "weight": <weight>, "weightedScore": <weighted score>, "issue": "<what is wrong>", "fix": "<specific fix>" },
+    { "key": "arc", "name": "Narrative Arc", "score": <raw 1-10>, "weight": <weight>, "weightedScore": <weighted score>, "issue": "<what is wrong>", "fix": "<specific fix>" },
+    { "key": "conversation", "name": "Conversation Trigger", "score": <raw 1-10>, "weight": <weight>, "weightedScore": <weighted score>, "issue": "<what is wrong>", "fix": "<specific fix>" },
+    { "key": "hashtags", "name": "Hashtag Discipline", "score": <raw 1-10>, "weight": <weight>, "weightedScore": <weighted score>, "issue": "<what is wrong>", "fix": "<specific fix>" },
+    { "key": "seo", "name": "LinkedIn SEO", "score": <raw 1-10>, "weight": <weight>, "weightedScore": <weighted score>, "issue": "<what is wrong>", "fix": "<specific fix>" },
+    { "key": "penalty", "name": "Penalty Avoidance", "score": <raw 1-10>, "weight": <weight>, "weightedScore": <weighted score>, "issue": "<what is wrong>", "fix": "<specific fix>" },
+    { "key": "share", "name": "Saveability / Shareability", "score": <raw 1-10>, "weight": <weight>, "weightedScore": <weighted score>, "issue": "<what is wrong>", "fix": "<specific fix>" }
   ],
   "voiceFingerprint": [
     "Tone: <description>",
@@ -377,6 +424,15 @@ Return ONLY valid JSON (no markdown, no prose) in this exact shape:
     "Vocabulary: <description>",
     "Structure: <description>"
   ],
-  "rewritten": "<voice-preserved, algorithm-optimized rewrite that sounds exactly like the same author, preserving all line breaks using \\n>"
+  "rewritten": "<voice-preserved, algorithm-optimized rewrite, preserving line breaks with \\n>",
+  "penaltiesApplied": [
+    { "item": "<penalty item name>", "deduction": <points deducted> }
+  ],
+  "calibration": {
+    "engagementRate": <calculated float value or null>,
+    "performanceTier": "<below average | average | above average | high performing | unknown>",
+    "overrideApplied": <true | false>,
+    "overrideReasoning": "<description>"
+  }
 }`;
 }

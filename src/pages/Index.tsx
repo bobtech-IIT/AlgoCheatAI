@@ -18,6 +18,7 @@ import { FAQ } from "@/components/landing/FAQ";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { Footer } from "@/components/landing/Footer";
 import { PlaybookSection } from "@/components/landing/PlaybookSection";
+import { CaseStudiesSection } from "@/components/landing/CaseStudiesSection";
 
 const Index = () => {
   return (
@@ -38,6 +39,8 @@ const Index = () => {
             <ContentLab />
           </div>
         </section>
+
+        <CaseStudiesSection />
 
         <StatsBand />
         <ComparisonTable />

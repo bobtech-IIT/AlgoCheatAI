@@ -1,6 +1,6 @@
 export default function handler(req, res) {
-  // Force backend proxy routing so we can run Cerebras serverless without CORS/login popups on mobile
+  // Return true if any key/token is configured on the Vercel backend to route traffic through serverless proxy
   return res.status(200).json({
-    hasOpenAIKey: true
+    hasOpenAIKey: !!(process.env.CEREBRAS_API_KEY || process.env.OPENAI_API_KEY || process.env.PUTER_AUTH_TOKEN)
   });
 }

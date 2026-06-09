@@ -49,18 +49,7 @@ export function Hero() {
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-primary text-primary" />
-              ))}
-              <span className="ml-1 font-medium text-foreground">4.95/5</span>
-            </div>
-            <span className="hidden sm:inline opacity-40">·</span>
-            <span>24,800+ posts audited this week</span>
-            <span className="hidden sm:inline opacity-40">·</span>
-            <span>100% Free · No sign-up required</span>
-          </div>
+
         </div>
 
         {/* Hero image */}

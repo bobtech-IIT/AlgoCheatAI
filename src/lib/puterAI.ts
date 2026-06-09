@@ -46,7 +46,7 @@ export interface TierScanResult {
  * Robustly retrieves the Puter guest session token or logged-in token.
  * Does not trigger interactive popups in background tasks.
  */
-async function getAuthToken(): Promise<string> {
+async function getAuthToken(): Promise<string | null> {
   if (typeof window === "undefined") {
     throw new Error("Client-only execution context");
   }
@@ -77,7 +77,7 @@ async function getAuthToken(): Promise<string> {
     return stored;
   }
 
-  return "no-token-available";
+  return null;
 }
 
 /**
@@ -185,12 +185,15 @@ export function hasPuterToken(): boolean {
  */
 export async function fetchEmbeddings(texts: string[]): Promise<number[][]> {
   const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   const response = await fetch("/api/embed", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`,
-    },
+    headers,
     body: JSON.stringify({ texts }),
   });
 
@@ -325,8 +328,10 @@ async function callAPI<T>(endpoint: string, payload: any): Promise<T> {
   const token = await getAuthToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`,
   };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
   const customKey = localStorage.getItem("algocheat.openai_key");
   const customUrl = localStorage.getItem("algocheat.api_url");
