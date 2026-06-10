@@ -74,42 +74,42 @@ const gradientPairs = [
 const playbooks: Record<string, PlaybookData> = {
   "personal-brand": {
     pages: [
-      { number: 1, icon: Mic, title: "Define Your Niche Voice", bullets: ["Find your 3 core topics", "Write your origin story", "Create your content pillar framework"] },
-      { number: 2, icon: Zap, title: "Hook Engineering", bullets: ["5 hook templates for personal brand", "The curiosity gap formula", "How to pattern-interrupt"] },
-      { number: 3, icon: Layout, title: "Content Architecture", bullets: ["The 3-2-1 framework", "Dwell-time formatting", "Mobile-first writing"] },
-      { number: 4, icon: MessageCircle, title: "Engagement Loop", bullets: ["Comment seeding strategy", "The 60-min sprint", "Building your community"] },
-      { number: 5, icon: Calendar, title: "Consistency System", bullets: ["30-day content calendar", "Batch creation workflow", "Repurposing engine"] },
-      { number: 6, icon: TrendingUp, title: "Growth Metrics", bullets: ["Track what matters", "Depth Score optimization", "Network effects"] },
+      { number: 1, icon: Mic, title: "Define Your Niche Voice", bullets: ["Mine your expertise for content topics that resonate", "Craft an origin story that hooks on first read", "Build a content pillar framework that scales effortlessly"] },
+      { number: 2, icon: Zap, title: "Hook Engineering", bullets: ["Steal these 5 proven hook templates and make them yours", "Open curiosity gaps your audience cannot resist clicking", "Master the pattern interrupt that stops the scroll cold"] },
+      { number: 3, icon: Layout, title: "Content Architecture", bullets: ["Apply the 3-2-1 rule for the perfect content mix", "Format every post for maximum dwell time retention", "Write scannable sentences built for mobile thumb stops"] },
+      { number: 4, icon: MessageCircle, title: "Engagement Loop", bullets: ["Seed comments that spark real conversations and debate", "Crush deep engagement in one focused 60-minute sprint", "Turn passive followers into an active loyal community"] },
+      { number: 5, icon: Calendar, title: "Consistency System", bullets: ["Plan 30 days of content themes in a single sitting", "Batch create like a media production house every Sunday", "Repurpose one long post into ten different content formats"] },
+      { number: 6, icon: TrendingUp, title: "Growth Metrics", bullets: ["Measure what actually moves your LinkedIn Depth Score", "Optimize every post for network effects and viral sharing", "Track the engagement metrics that the algorithm rewards most"] },
     ],
   },
   "b2b-leads": {
     pages: [
-      { number: 1, icon: PenTool, title: "Lead Magnet Content", bullets: ["Problem-aware hooks", "Authority-building posts", "Case study frameworks"] },
-      { number: 2, icon: TargetIcon, title: "Conversion Architecture", bullets: ["Soft CTA sequences", "DM funnel scripts", "Pipeline acceleration"] },
-      { number: 3, icon: Award, title: "Trust Building", bullets: ["Behind-the-scenes content", "Social proof stacking", "Client results showcase"] },
-      { number: 4, icon: TrendingUp, title: "Outbound Integration", bullets: ["Comment targeting", "Warm outreach templates", "Multi-channel alignment"] },
-      { number: 5, icon: BarChart3, title: "Analytics & Optimization", bullets: ["Lead source tracking", "Conversion rate optimization", "A/B testing"] },
-      { number: 6, icon: Rocket, title: "Scaling System", bullets: ["Content batching", "VA delegation", "Automated follow-ups"] },
+      { number: 1, icon: PenTool, title: "Lead Magnet Content", bullets: ["Hook directly into your dream client's biggest pain points", "Build authority with tactical deep dives they will save", "Package real case studies as high-converting lead magnets"] },
+      { number: 2, icon: TargetIcon, title: "Conversion Architecture", bullets: ["Guide readers from curious to ready with soft CTAs", "Script DMs that convert cold prospects into warm leads", "Accelerate your pipeline with strategic content sequences"] },
+      { number: 3, icon: Award, title: "Trust Building", bullets: ["Show the messy behind-the-scenes reality prospects crave", "Stack social proof elements that actually drive real trust", "Showcase client wins in a way that sells without bragging"] },
+      { number: 4, icon: TrendingUp, title: "Outbound Integration", bullets: ["Target comments that signal buyer intent and engage there", "Craft warm outreach that feels personal and never spammy", "Align your LinkedIn content with email campaigns for lift"] },
+      { number: 5, icon: BarChart3, title: "Analytics & Optimization", bullets: ["Track exactly which posts drive phone calls and demos", "Optimize conversion rates from first click to closed deal", "A/B test your headlines hooks and formats systematically"] },
+      { number: 6, icon: Rocket, title: "Scaling System", bullets: ["Batch an entire month of content in a single focused day", "Delegate design and editing to VAs with clear playbooks", "Automate follow-up sequences so no lead ever goes cold"] },
     ],
   },
   "next-role": {
     pages: [
-      { number: 1, icon: Mic, title: "Profile Optimization", bullets: ["Headline engineering", "About section storytelling", "Experience rewriter"] },
-      { number: 2, icon: Lightbulb, title: "Authority Content", bullets: ["Thought leadership posts", "Industry insight sharing", "Problem-solving content"] },
-      { number: 3, icon: Users, title: "Network Building", bullets: ["Recruiter targeting", "Company research", "Alumni engagement"] },
-      { number: 4, icon: Briefcase, title: "Application Strategy", bullets: ["Cover letter posts", "Portfolio showcasing", "Interview prep content"] },
-      { number: 5, icon: CheckCircle, title: "Social Proof", bullets: ["Recommendation requests", "Project highlights", "Skill demonstrations"] },
-      { number: 6, icon: Star, title: "Follow-up System", bullets: ["Post-interview content", "Relationship maintenance", "Offer negotiation"] },
+      { number: 1, icon: Mic, title: "Profile Optimization", bullets: ["Engineer a headline that recruiters actually search for daily", "Tell your career story in the About section with impact", "Rewrite every experience entry as measurable business results"] },
+      { number: 2, icon: Lightbulb, title: "Authority Content", bullets: ["Post thought leadership content that starts industry debates", "Share actionable insights that hiring managers bookmark and cite", "Solve the real problems your target companies are posting about"] },
+      { number: 3, icon: Users, title: "Network Building", bullets: ["Target recruiters at your dream companies with precision", "Research each company deeply before sending a connection request", "Engage alumni networks strategically for warm introductions"] },
+      { number: 4, icon: Briefcase, title: "Application Strategy", bullets: ["Write cover letters as LinkedIn posts that prove your thinking", "Showcase portfolio work with real metrics and outcomes attached", "Prepare for interviews using the content they have already seen"] },
+      { number: 5, icon: CheckCircle, title: "Social Proof", bullets: ["Ask for recommendations that highlight specific results delivered", "Feature past projects with hard metrics and tangible outcomes shown", "Demonstrate skills through mini case studies recruiters can grasp"] },
+      { number: 6, icon: Star, title: "Follow-up System", bullets: ["Post relevant content after interviews to stay top of mind always", "Nurture every relationship built during the job search process", "Negotiate offers backed by evidence of the value you bring"] },
     ],
   },
   "expertise": {
     pages: [
-      { number: 1, icon: Volume2, title: "Thought Leadership", bullets: ["Original research posts", "Framework creation", "Industry predictions"] },
-      { number: 2, icon: BookOpen, title: "Educational Content", bullets: ["How-to threads", "Tool comparisons", "Resource curation"] },
-      { number: 3, icon: Heart, title: "Community Building", bullets: ["Discussion starters", "Collaboration posts", "Expert roundtables"] },
-      { number: 4, icon: PieChart, title: "Content Systems", bullets: ["Idea capture", "Writing workflow", "Publishing schedule"] },
-      { number: 5, icon: BarChart3, title: "Authority Metrics", bullets: ["Engagement analysis", "Reach optimization", "Influence tracking"] },
-      { number: 6, icon: Star, title: "Legacy Building", bullets: ["Newsletter creation", "Speaking opportunities", "Mentorship content"] },
+      { number: 1, icon: Volume2, title: "Thought Leadership", bullets: ["Publish original research and data no one else has gathered yet", "Invent mental frameworks that define how your field thinks", "Predict industry trends with specificity and build credibility fast"] },
+      { number: 2, icon: BookOpen, title: "Educational Content", bullets: ["Write how-to threads so clear they get saved by thousands instantly", "Compare tools and approaches honestly to earn deep lasting trust", "Curate the best resources your audience needs in one reliable place"] },
+      { number: 3, icon: Heart, title: "Community Building", bullets: ["Start debates that attract experts to comment and add their insights", "Collaborate with peers on co-created content that multiplies reach", "Host expert roundtables that position you as the connector in chief"] },
+      { number: 4, icon: PieChart, title: "Content Systems", bullets: ["Capture content ideas the moment they strike with a reliable system", "Build a daily writing workflow that never stalls or feels forced", "Schedule publishing so your audience can rely on a consistent rhythm"] },
+      { number: 5, icon: BarChart3, title: "Authority Metrics", bullets: ["Analyze engagement patterns to discover exactly what resonates deeply", "Optimize your organic reach by studying algorithm signals and trends", "Track your influence growth across platforms with objective benchmarks"] },
+      { number: 6, icon: Star, title: "Legacy Building", bullets: ["Launch a newsletter your entire niche depends on for weekly insights", "Land speaking gigs and podcast invites from your LinkedIn presence", "Mentor emerging creators and build a lasting reputation that compounds"] },
     ],
   },
 }
@@ -135,11 +135,14 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
       { bg: "linear-gradient(135deg,#0f1a1a,#1a3d3d,#2a5a5a)", accent: "#2dd4bf" },
     ]
 
+    const vectorIcon = (accent: string): string =>
+      `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${accent}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:8px"><polyline points="9 18 15 12 9 6"></polyline></svg>`
+
     const formatBullets = (bullets: string[], accent: string): string =>
       bullets.map((b, i) => `
-        <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:${i < bullets.length - 1 ? "14px" : "0"};padding:0 40px">
-          <div style="width:10px;height:10px;border-radius:50%;background:${accent};flex-shrink:0;margin-top:8px"></div>
-          <span style="font-size:28px;line-height:1.5;color:rgba(255,255,255,0.9);font-weight:400;letter-spacing:0.3px">${b}</span>
+        <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:${i < bullets.length - 1 ? "16px" : "0"};padding:0 40px">
+          ${vectorIcon(accent)}
+          <span style="font-size:26px;line-height:1.5;color:rgba(255,255,255,0.9);font-weight:400;letter-spacing:0.2px">${b}</span>
         </div>
       `).join("")
 
@@ -151,20 +154,16 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
         <div style="width:100%;height:100%;background:${data.bg};display:flex;flex-direction:column;align-items:center;justify-content:center;padding:70px 80px;box-sizing:border-box;position:relative">
           <div style="position:absolute;top:0;left:0;right:0;height:6px;background:${data.accent};opacity:0.5"></div>
           <div style="position:absolute;top:28px;left:50%;transform:translateX(-50%);font-size:14px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.35);font-weight:600">AlgoCheat AI</div>
-          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;width:100%;max-width:850px">
-            <div style="width:130px;height:130px;border-radius:50%;background:${data.accent}22;display:flex;align-items:center;justify-content:center;margin-bottom:36px;position:relative">
-              <div style="width:110px;height:110px;border-radius:50%;background:${data.accent}33;display:flex;align-items:center;justify-content:center">
-                <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,${data.accent},rgba(255,255,255,0.3));display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px ${data.accent}44">
-                  <span style="font-size:40px;font-weight:800;color:#fff">${page.number}</span>
-                </div>
-              </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;width:100%;max-width:880px">
+            <div style="display:flex;gap:8px;margin-bottom:32px;opacity:0.5">
+              ${Array.from({length:3}, () => `<div style="width:10px;height:10px;transform:rotate(45deg);background:${data.accent}"></div>`).join("")}
             </div>
-            <div style="text-align:center;margin-bottom:20px;width:100%">
+            <div style="text-align:center;margin-bottom:24px;width:100%">
               ${page.title.split(" ").map((word, wi, arr) =>
-                `<span style="display:inline-block;font-size:48px;font-weight:700;color:#fff;letter-spacing:-0.5px;line-height:1.15;${wi < arr.length - 1 ? "margin-right:0.3em" : ""}">${word}</span>`
+                `<span style="display:inline-block;font-size:52px;font-weight:700;color:#fff;letter-spacing:-0.5px;line-height:1.15;${wi < arr.length - 1 ? "margin-right:0.3em" : ""}">${word}</span>`
               ).join("")}
             </div>
-            <div style="width:80px;height:2px;background:${data.accent};opacity:0.4;margin-bottom:32px;border-radius:2px"></div>
+            <div style="width:60px;height:3px;background:${data.accent};opacity:0.5;margin-bottom:36px;border-radius:3px"></div>
             <div style="width:100%">${formatBullets(page.bullets, data.accent)}</div>
           </div>
           <div style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-size:15px;letter-spacing:2px;color:rgba(255,255,255,0.3);font-weight:500">${page.number} / 6</div>
