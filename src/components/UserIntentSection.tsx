@@ -125,36 +125,61 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
 
   const handlePrint = useCallback(async () => {
     if (!playbook) return
-    const gradientMap: Record<number, [string, string]> = {
-      0: ["#7c3aed", "#9333ea"],
-      1: ["#059669", "#0d9488"],
-      2: ["#d97706", "#ea580c"],
-      3: ["#e11d48", "#db2777"],
-      4: ["#2563eb", "#4f46e5"],
-      5: ["#0891b2", "#0e7490"],
-    }
+
+    const slidesData = [
+      { bg: "linear-gradient(135deg,#0f0c29,#302b63,#24243e)", accent: "#a78bfa" },
+      { bg: "linear-gradient(135deg,#0d1717,#1a3a3a,#2d5a5a)", accent: "#5eead4" },
+      { bg: "linear-gradient(135deg,#1a0e0e,#3d1a1a,#5c2a2a)", accent: "#fbbf24" },
+      { bg: "linear-gradient(135deg,#1a0a2e,#2d1b69,#4a2d8a)", accent: "#f472b6" },
+      { bg: "linear-gradient(135deg,#0c1929,#1a365d,#2a4f8a)", accent: "#60a5fa" },
+      { bg: "linear-gradient(135deg,#0f1a1a,#1a3d3d,#2a5a5a)", accent: "#2dd4bf" },
+    ]
+
+    const formatBullets = (bullets: string[], accent: string): string =>
+      bullets.map((b, i) => `
+        <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:${i < bullets.length - 1 ? "14px" : "0"};padding:0 40px">
+          <div style="width:10px;height:10px;border-radius:50%;background:${accent};flex-shrink:0;margin-top:8px"></div>
+          <span style="font-size:28px;line-height:1.5;color:rgba(255,255,255,0.9);font-weight:400;letter-spacing:0.3px">${b}</span>
+        </div>
+      `).join("")
+
     const buildSlide = (page: PlaybookPage, idx: number): HTMLDivElement => {
-      const [c1, c2] = gradientMap[idx] ?? ["#7c3aed", "#9333ea"]
+      const data = slidesData[idx] ?? slidesData[0]
       const el = document.createElement("div")
-      el.style.cssText = `position:fixed;top:0;left:0;z-index:9999;width:1080px;height:1440px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 60px;box-sizing:border-box;background:linear-gradient(135deg,${c1},${c2});color:#fff;font-family:system-ui,sans-serif`
+      el.style.cssText = "position:fixed;top:0;left:0;z-index:9999;width:1080px;height:1440px;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,sans-serif"
       el.innerHTML = `
-<div style="text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px">
-  <div style="width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:800">${page.number}</div>
-  <h2 style="font-size:44px;font-weight:700;line-height:1.2;margin:0;text-align:center">${page.title}</h2>
-  <ul style="list-style:none;padding:0;margin:16px 0 0;text-align:left;width:100%">
-    ${page.bullets.map(b => `<li style="font-size:24px;line-height:1.6;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:12px"><span style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.6);flex-shrink:0"></span>${b}</li>`).join("")}
-  </ul>
-</div>
-<div style="position:absolute;bottom:24px;font-size:18px;opacity:0.6">AlgoCheat AI · Playbook ${page.number}/6</div>
-`
+        <div style="width:100%;height:100%;background:${data.bg};display:flex;flex-direction:column;align-items:center;justify-content:center;padding:70px 80px;box-sizing:border-box;position:relative">
+          <div style="position:absolute;top:0;left:0;right:0;height:6px;background:${data.accent};opacity:0.5"></div>
+          <div style="position:absolute;top:28px;left:50%;transform:translateX(-50%);font-size:14px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.35);font-weight:600">AlgoCheat AI</div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;width:100%;max-width:850px">
+            <div style="width:130px;height:130px;border-radius:50%;background:${data.accent}22;display:flex;align-items:center;justify-content:center;margin-bottom:36px;position:relative">
+              <div style="width:110px;height:110px;border-radius:50%;background:${data.accent}33;display:flex;align-items:center;justify-content:center">
+                <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,${data.accent},rgba(255,255,255,0.3));display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px ${data.accent}44">
+                  <span style="font-size:40px;font-weight:800;color:#fff">${page.number}</span>
+                </div>
+              </div>
+            </div>
+            <div style="text-align:center;margin-bottom:20px;width:100%">
+              ${page.title.split(" ").map((word, wi, arr) =>
+                `<span style="display:inline-block;font-size:48px;font-weight:700;color:#fff;letter-spacing:-0.5px;line-height:1.15;${wi < arr.length - 1 ? "margin-right:0.3em" : ""}">${word}</span>`
+              ).join("")}
+            </div>
+            <div style="width:80px;height:2px;background:${data.accent};opacity:0.4;margin-bottom:32px;border-radius:2px"></div>
+            <div style="width:100%">${formatBullets(page.bullets, data.accent)}</div>
+          </div>
+          <div style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-size:15px;letter-spacing:2px;color:rgba(255,255,255,0.3);font-weight:500">${page.number} / 6</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:${data.accent};opacity:0.3"></div>
+        </div>
+      `
       return el
     }
+
     const pdf = new jsPDF({ unit: "px", format: [1080, 1440], orientation: "portrait" })
     const slides = playbook.pages.map((p, i) => buildSlide(p, i))
     slides.forEach((s) => document.body.appendChild(s))
-    await new Promise((r) => setTimeout(r, 100))
+    await new Promise((r) => setTimeout(r, 500))
     for (let i = 0; i < slides.length; i++) {
-      const canvas = await html2canvas(slides[i], { scale: 1, useCORS: true, logging: false, backgroundColor: null })
+      const canvas = await html2canvas(slides[i], { scale: 2, useCORS: true, logging: false, backgroundColor: "#ffffff" })
       const img = canvas.toDataURL("image/jpeg", 0.95)
       if (i > 0) pdf.addPage([1080, 1440])
       pdf.addImage(img, "JPEG", 0, 0, 1080, 1440)
