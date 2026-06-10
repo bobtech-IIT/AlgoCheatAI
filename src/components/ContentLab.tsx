@@ -66,7 +66,20 @@ function scoreColor(score: number) {
 }
 
 function sanitizeForWhatsApp(s: string): string {
-  return s.replace(/[^\x20-\x7E\n\r]/g, "").replace(/\n{3,}/g, "\n\n").trim();
+  const map: Record<string, string> = {
+    "\u2013": " -- ", "\u2014": " -- ", "\u2018": "'", "\u2019": "'",
+    "\u201C": '"', "\u201D": '"', "\u2022": "-", "\u2026": "...",
+    "\u00A0": " ", "\u00AB": "<<", "\u00BB": ">>", "\u2039": "<",
+    "\u203A": ">",
+  };
+  let r = "";
+  for (const ch of s) {
+    if (ch >= " " && ch <= "~") { r += ch; continue; }
+    if (ch === "\n" || ch === "\r") { r += ch; continue; }
+    const mapped = map[ch];
+    if (mapped) { r += mapped; continue; }
+  }
+  return r.replace(/\n{3,}/g, "\n\n").trim();
 }
 
 function CopyButton({ text }: { text: string }) {
