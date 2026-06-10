@@ -10,7 +10,8 @@ import {
   type LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import html2pdf from "html2pdf.js"
+import html2canvas from "html2canvas"
+import jsPDF from "jspdf"
 
 interface UserIntentSectionProps {
   onPlaybookReady?: () => void
@@ -122,11 +123,8 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
     setSelected(id)
   }
 
-  const handlePrint = useCallback(() => {
+  const handlePrint = useCallback(async () => {
     if (!playbook) return
-    const container = document.createElement("div")
-    container.id = "pdf-export-container"
-    container.style.cssText = "position:fixed;top:0;left:0;width:3in;opacity:0;pointer-events:none;z-index:-1;font-family:system-ui,sans-serif"
     const gradientMap: Record<number, [string, string]> = {
       0: ["#7c3aed", "#9333ea"],
       1: ["#059669", "#0d9488"],
@@ -135,31 +133,34 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
       4: ["#2563eb", "#4f46e5"],
       5: ["#0891b2", "#0e7490"],
     }
-    playbook.pages.forEach((page, i) => {
-      const [c1, c2] = gradientMap[i] ?? ["#7c3aed", "#9333ea"]
-      const slide = document.createElement("div")
-      slide.className = "pdf-slide"
-      slide.style.cssText = `width:3in;height:4in;page-break-after:always;overflow:hidden;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0.4in 0.35in;box-sizing:border-box;background:linear-gradient(135deg,${c1},${c2});color:#fff`
-      slide.innerHTML = `
-<div style="text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
-  <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800">${page.number}</div>
-  <h2 style="font-size:22px;font-weight:700;line-height:1.2;margin:0;text-align:center">${page.title}</h2>
-  <ul style="list-style:none;padding:0;margin:8px 0 0;text-align:left;width:100%">
-    ${page.bullets.map(b => `<li style="font-size:13px;line-height:1.5;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.6);flex-shrink:0"></span>${b}</li>`).join("")}
+    const buildSlide = (page: PlaybookPage, idx: number): HTMLDivElement => {
+      const [c1, c2] = gradientMap[idx] ?? ["#7c3aed", "#9333ea"]
+      const el = document.createElement("div")
+      el.style.cssText = `position:fixed;top:0;left:0;z-index:9999;width:1080px;height:1440px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 60px;box-sizing:border-box;background:linear-gradient(135deg,${c1},${c2});color:#fff;font-family:system-ui,sans-serif`
+      el.innerHTML = `
+<div style="text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px">
+  <div style="width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:800">${page.number}</div>
+  <h2 style="font-size:44px;font-weight:700;line-height:1.2;margin:0;text-align:center">${page.title}</h2>
+  <ul style="list-style:none;padding:0;margin:16px 0 0;text-align:left;width:100%">
+    ${page.bullets.map(b => `<li style="font-size:24px;line-height:1.6;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:12px"><span style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.6);flex-shrink:0"></span>${b}</li>`).join("")}
   </ul>
 </div>
-<div style="position:absolute;bottom:14px;font-size:10px;opacity:0.6">AlgoCheat AI · Playbook ${page.number}/6</div>
+<div style="position:absolute;bottom:24px;font-size:18px;opacity:0.6">AlgoCheat AI · Playbook ${page.number}/6</div>
 `
-      container.appendChild(slide)
-    })
-    document.body.appendChild(container)
-    requestAnimationFrame(() => {
-      html2pdf()
-        .set({ margin: 0, filename: "algocheat-playbook.pdf", image: { type: "jpeg", quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, logging: false }, pagebreak: { mode: "css" }, jsPDF: { unit: "in", format: [3, 4], orientation: "portrait" } })
-        .from(container)
-        .save()
-        .then(() => { container.remove() })
-    })
+      return el
+    }
+    const pdf = new jsPDF({ unit: "px", format: [1080, 1440], orientation: "portrait" })
+    const slides = playbook.pages.map((p, i) => buildSlide(p, i))
+    slides.forEach((s) => document.body.appendChild(s))
+    await new Promise((r) => setTimeout(r, 100))
+    for (let i = 0; i < slides.length; i++) {
+      const canvas = await html2canvas(slides[i], { scale: 1, useCORS: true, logging: false, backgroundColor: null })
+      const img = canvas.toDataURL("image/jpeg", 0.95)
+      if (i > 0) pdf.addPage([1080, 1440])
+      pdf.addImage(img, "JPEG", 0, 0, 1080, 1440)
+      slides[i].remove()
+    }
+    pdf.save("algocheat-playbook.pdf")
   }, [playbook])
 
   async function handleGenerate() {
