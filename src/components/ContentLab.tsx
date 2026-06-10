@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap, MessageSquarePlus } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, FileText, Image as ImageIcon, BookOpen, Zap, MessageSquarePlus, MessageCircle } from "lucide-react";
 import { auditContent, generateContent, scanTopicTier, generateForAlgoCheat, getContextQuestions, generateWithUserContext, validateUserAnswers, triggerPuterSignIn, hasPuterToken, refineContent, AuditResult, GenerateResult } from "@/lib/puterAI";
 import { ContentType, RUBRICS } from "@/lib/auditRubrics";
 import { useToast } from "@/hooks/use-toast";
@@ -69,21 +69,29 @@ function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   return (
-    <Button
-      size="sm"
-      variant="outline"
-      onClick={() => {
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        toast({
-          description: "Copied to clipboard",
-        });
-        setTimeout(() => setCopied(false), 1500);
-      }}
-    >
-      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-      {copied ? "Copied" : "Copy"}
-    </Button>
+    <div className="flex items-center gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          navigator.clipboard.writeText(text);
+          setCopied(true);
+          toast({ description: "Copied to clipboard" });
+          setTimeout(() => setCopied(false), 1500);
+        }}
+      >
+        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+        {copied ? "Copied" : "Copy"}
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")}
+      >
+        <MessageCircle className="w-4 h-4" />
+        WhatsApp
+      </Button>
+    </div>
   );
 }
 
