@@ -67,8 +67,8 @@ function scoreColor(score: number) {
 
 function sanitizeForWhatsApp(s: string): string {
   const map: Record<string, string> = {
-    "\u2013": " -- ", "\u2014": " -- ", "\u2018": "'", "\u2019": "'",
-    "\u201C": '"', "\u201D": '"', "\u2022": "-", "\u2026": "...",
+    "\u2013": " - ", "\u2014": " - ", "\u2018": "'", "\u2019": "'",
+    "\u201C": '"', "\u201D": '"', "\u2022": " - ", "\u2026": "...",
     "\u00A0": " ", "\u00AB": "<<", "\u00BB": ">>", "\u2039": "<",
     "\u203A": ">",
   };
