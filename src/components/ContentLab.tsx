@@ -65,6 +65,10 @@ function scoreColor(score: number) {
   return "bg-destructive";
 }
 
+function stripEmojis(s: string): string {
+  return s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -86,7 +90,7 @@ function CopyButton({ text }: { text: string }) {
       <Button
         size="sm"
         variant="outline"
-        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")}
+        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(stripEmojis(text))}`, "_blank")}
       >
         <MessageCircle className="w-4 h-4" />
         WhatsApp
