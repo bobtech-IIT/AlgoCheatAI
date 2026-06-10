@@ -10,6 +10,7 @@ import {
   type LucideIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import html2pdf from "html2pdf.js"
 
 interface UserIntentSectionProps {
   onPlaybookReady?: () => void
@@ -122,28 +123,41 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
   }
 
   const handlePrint = useCallback(() => {
-    const style = document.createElement("style")
-    style.id = "algocheat-print-css"
-    style.textContent = `
-      @media print {
-        body > *:not(:has(#playbook-section)) { display: none !important; }
-        body :has(#playbook-section) { display: block !important; }
-        #playbook-section { padding: 20px 40px !important; }
-        #playbook-section .card { break-inside: avoid !important; border: 1px solid #ddd !important; box-shadow: none !important; }
-        #playbook-section button { display: none !important; }
-        #playbook-section h3 { font-size: 24px !important; margin-bottom: 8px !important; }
-        #playbook-section p { font-size: 14px !important; margin-bottom: 24px !important; }
-      }
-    `
-    document.head.appendChild(style)
-    setTimeout(() => {
-      window.print()
-      setTimeout(() => {
-        const el = document.getElementById("algocheat-print-css")
-        if (el) el.remove()
-      }, 500)
-    }, 100)
-  }, [])
+    if (!playbook) return
+    const container = document.createElement("div")
+    container.id = "pdf-export-container"
+    container.style.cssText = "position:fixed;left:-9999px;top:0;width:3in;font-family:system-ui,sans-serif"
+    const gradientMap: Record<number, [string, string]> = {
+      0: ["#7c3aed", "#9333ea"],
+      1: ["#059669", "#0d9488"],
+      2: ["#d97706", "#ea580c"],
+      3: ["#e11d48", "#db2777"],
+      4: ["#2563eb", "#4f46e5"],
+      5: ["#0891b2", "#0e7490"],
+    }
+    playbook.pages.forEach((page, i) => {
+      const [c1, c2] = gradientMap[i] ?? ["#7c3aed", "#9333ea"]
+      const slide = document.createElement("div")
+      slide.style.cssText = `width:3in;height:4in;page-break-after:always;overflow:hidden;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0.4in 0.35in;box-sizing:border-box;background:linear-gradient(135deg,${c1},${c2});color:#fff`
+      slide.innerHTML = `
+<div style="text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+  <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800">${page.number}</div>
+  <h2 style="font-size:22px;font-weight:700;line-height:1.2;margin:0;text-align:center">${page.title}</h2>
+  <ul style="list-style:none;padding:0;margin:8px 0 0;text-align:left;width:100%">
+    ${page.bullets.map(b => `<li style="font-size:13px;line-height:1.5;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.6);flex-shrink:0"></span>${b}</li>`).join("")}
+  </ul>
+</div>
+<div style="position:absolute;bottom:14px;font-size:10px;opacity:0.6">AlgoCheat AI · Playbook ${page.number}/6</div>
+`
+      container.appendChild(slide)
+    })
+    document.body.appendChild(container)
+    html2pdf()
+      .set({ margin: 0, filename: "algocheat-playbook.pdf", image: { type: "jpeg", quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: "in", format: [3, 4], orientation: "portrait" } })
+      .from(container)
+      .save()
+      .then(() => { container.remove() })
+  }, [playbook])
 
   async function handleGenerate() {
     if (!selected) return
@@ -281,7 +295,7 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
                 onClick={handlePrint}
                 className="h-12 px-8 text-base"
               >
-                🖨️ Download as PDF
+                Download Carousel PDF
               </Button>
             </div>
           </div>
@@ -289,7 +303,7 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
 
         {!playbook && !generating && (
           <p className="text-center text-sm text-muted-foreground mt-8">
-            Join <span className="text-primary font-semibold">8,200+</span> creators using AlgoCheat AI to grow on LinkedIn
+            Writing eats <span className="text-primary font-semibold">2+ hours</span> of your day. AI productivity tools are trending <span className="text-primary font-semibold">+120%</span> — because your time is your only moat.
           </p>
         )}
       </div>

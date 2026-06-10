@@ -5,7 +5,7 @@ export function LogoCloud() {
     <section className="py-12 border-y border-border/40 bg-card/20">
       <div className="container">
         <p className="text-center text-xs uppercase tracking-[0.25em] text-muted-foreground mb-6">
-          Trusted by 8,200 solo founders & featured in
+          Writing is productivity. Stop wasting hours. Featured in
         </p>
         <div className="overflow-hidden">
           <div className="flex gap-12 animate-marquee whitespace-nowrap">

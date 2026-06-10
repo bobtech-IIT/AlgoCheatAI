@@ -23,7 +23,7 @@ export function Testimonials() {
         <div className="max-w-2xl mx-auto text-center mb-12">
           <p className="text-sm font-medium text-primary uppercase tracking-widest mb-3">Wall of love</p>
           <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
-            8,200 solo operators. <span className="text-gradient-mint">Zero ad spend.</span>
+            Writing eats 2+ hours of your day. <span className="text-gradient-mint">We fix that.</span>
           </h2>
         </div>
 

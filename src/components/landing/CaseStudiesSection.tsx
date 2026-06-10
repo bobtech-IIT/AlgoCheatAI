@@ -115,12 +115,17 @@ export function CaseStudiesSection() {
             </span>
             <Badge variant="destructive" className="text-[10px] py-0.5 px-2">Low Algorithm Delivery</Badge>
           </div>
-          <div className="relative">
+          <div className="hidden md:block relative">
             <div className="flex gap-6" style={{ animation: "scroll-left 35s linear infinite" }}>
               {[...ORIGINAL_DRAFTS, ...ORIGINAL_DRAFTS].map((draft, i) => (
                 <OriginalCard key={`${draft.id}-${i}`} draft={draft} />
               ))}
             </div>
+          </div>
+          <div className="md:hidden grid grid-cols-1 gap-4">
+            {ORIGINAL_DRAFTS.map((draft) => (
+              <OriginalCard key={draft.id} draft={draft} />
+            ))}
           </div>
         </div>
 
@@ -132,12 +137,17 @@ export function CaseStudiesSection() {
             </span>
             <Badge className="bg-green-500 hover:bg-green-500 text-[10px] py-0.5 px-2">High Algorithm Delivery</Badge>
           </div>
-          <div className="relative">
+          <div className="hidden md:block relative">
             <div className="flex gap-6" style={{ animation: "scroll-left 35s linear infinite" }}>
               {[...REWRITTEN_POSTS, ...REWRITTEN_POSTS].map((post, i) => (
                 <RewrittenCard key={`${post.id}-${i}`} post={post} />
               ))}
             </div>
+          </div>
+          <div className="md:hidden grid grid-cols-1 gap-4">
+            {REWRITTEN_POSTS.map((post) => (
+              <RewrittenCard key={post.id} post={post} />
+            ))}
           </div>
         </div>
       </div>
