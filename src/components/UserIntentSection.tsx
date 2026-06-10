@@ -126,7 +126,7 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
     if (!playbook) return
     const container = document.createElement("div")
     container.id = "pdf-export-container"
-    container.style.cssText = "position:fixed;left:-9999px;top:0;width:3in;font-family:system-ui,sans-serif"
+    container.style.cssText = "position:fixed;top:0;left:0;width:3in;opacity:0;pointer-events:none;z-index:-1;font-family:system-ui,sans-serif"
     const gradientMap: Record<number, [string, string]> = {
       0: ["#7c3aed", "#9333ea"],
       1: ["#059669", "#0d9488"],
@@ -138,6 +138,7 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
     playbook.pages.forEach((page, i) => {
       const [c1, c2] = gradientMap[i] ?? ["#7c3aed", "#9333ea"]
       const slide = document.createElement("div")
+      slide.className = "pdf-slide"
       slide.style.cssText = `width:3in;height:4in;page-break-after:always;overflow:hidden;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0.4in 0.35in;box-sizing:border-box;background:linear-gradient(135deg,${c1},${c2});color:#fff`
       slide.innerHTML = `
 <div style="text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
@@ -152,11 +153,13 @@ export function UserIntentSection({ onPlaybookReady }: UserIntentSectionProps) {
       container.appendChild(slide)
     })
     document.body.appendChild(container)
-    html2pdf()
-      .set({ margin: 0, filename: "algocheat-playbook.pdf", image: { type: "jpeg", quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: "in", format: [3, 4], orientation: "portrait" } })
-      .from(container)
-      .save()
-      .then(() => { container.remove() })
+    requestAnimationFrame(() => {
+      html2pdf()
+        .set({ margin: 0, filename: "algocheat-playbook.pdf", image: { type: "jpeg", quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, logging: false }, pagebreak: { mode: "css" }, jsPDF: { unit: "in", format: [3, 4], orientation: "portrait" } })
+        .from(container)
+        .save()
+        .then(() => { container.remove() })
+    })
   }, [playbook])
 
   async function handleGenerate() {
