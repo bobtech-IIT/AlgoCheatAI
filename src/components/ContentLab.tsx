@@ -79,7 +79,7 @@ function sanitizeForWhatsApp(s: string): string {
     const mapped = map[ch];
     if (mapped) { r += mapped; continue; }
   }
-  return r.replace(/\n{3,}/g, "\n\n").trim();
+  return r.replace(/\n{3,}/g, "\n\n").replace(/^([1-9]) +([A-Z])/gm, "$1. $2").trim();
 }
 
 function CopyButton({ text }: { text: string }) {
